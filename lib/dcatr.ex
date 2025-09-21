@@ -2,17 +2,7 @@ defmodule DCATR do
   @moduledoc """
   Documentation for `DCATR`.
   """
+  import RDF.Namespace
 
-  @doc """
-  Hello world.
-
-  ## Examples
-
-      iex> DCATR.hello()
-      :world
-
-  """
-  def hello do
-    :world
-  end
+  act_as_namespace DCATR.NS.DCATR
 end

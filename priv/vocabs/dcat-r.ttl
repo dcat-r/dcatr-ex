@@ -1,0 +1,60 @@
+@prefix dcatr: <https://w3id.org/dcat-r#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix dct: <http://purl.org/dc/terms/> .
+
+
+##########################################################################
+# Service
+##########################################################################
+
+dcatr:Service a rdfs:Class, owl:Class
+        ; rdfs:subClassOf dcat:DataService
+        ; owl:disjointWith dcatr:Repository, dcatr:Dataset
+        ; rdfs:label "Service"
+        ; rdfs:comment "A dcatr:Service is a composition of a dcatr:Repository in a specific dcatr:Store."
+.
+    
+    dcatr:serviceRepository a rdf:Property, owl:ObjectProperty, owl:FunctionalProperty
+            ; rdfs:subPropertyOf dcat:servesDataset
+            ; rdfs:domain dcatr:Service
+            ; rdfs:range  dcatr:Repository
+            ; rdfs:label "service repository"
+            ; rdfs:comment "Links a service to its repository."
+    .
+    
+##########################################################################
+# Repository
+##########################################################################
+
+dcatr:Repository a rdfs:Class, owl:Class
+        ; rdfs:subClassOf dcat:Catalog
+        ; owl:disjointWith dcatr:Service, dcatr:Dataset
+        ; rdfs:label "Repository"
+        ; rdfs:comment "Represents a DCAT-R repository, which is a DCAT catalog containing three components: 1) the dataset, 2) an implicit metadata graph and 3) potentially additional system graphs. The metadata graph contains the DCAT catalog description of the repository itself, including descriptions of the dataset and the system graphs."
+.
+
+    dcatr:repositoryDataset a rdf:Property, owl:ObjectProperty, owl:FunctionalProperty
+            ; rdfs:subPropertyOf dcat:dataset
+            ; rdfs:domain dcatr:Repository
+            ; rdfs:range  dcatr:Dataset
+            ; rdfs:label "repository dataset"
+            ; rdfs:comment "Links a repository to its primary dataset."
+    .
+
+##########################################################################
+# Dataset
+##########################################################################
+
+dcatr:Dataset a rdfs:Class, owl:Class
+        ; rdfs:subClassOf dcat:Dataset
+        ; owl:disjointWith dcatr:Service, dcatr:Repository
+        ; rdfs:label "Dataset"
+        ; rdfs:comment "Represents the RDF dataset within a DCAT-R repository with actual user data."
+.
