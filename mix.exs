@@ -20,7 +20,8 @@ defmodule DCATR.MixProject do
 
   defp deps do
     [
-      rdf_ex_dep(:rdf, "~> 2.0")
+      rdf_ex_dep(:rdf, "~> 2.0"),
+      rdf_ex_dep(:grax, "~> 0.6")
     ]
   end
 
