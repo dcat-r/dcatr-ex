@@ -8,7 +8,8 @@ defmodule DCATR.MixProject do
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
-      deps: deps()
+      deps: deps(),
+      dialyzer: dialyzer()
     ]
   end
 
@@ -22,7 +23,8 @@ defmodule DCATR.MixProject do
     [
       rdf_ex_dep(:rdf, "~> 2.0"),
       rdf_ex_dep(:grax, "~> 0.6"),
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
     ]
   end
 
@@ -31,6 +33,12 @@ defmodule DCATR.MixProject do
       "LOCAL" -> {dep, path: "../../../RDF.ex/src/#{dep}"}
       _ -> {dep, version}
     end
+  end
+
+  defp dialyzer do
+    [
+      plt_file: {:no_warn, "priv/plts/dialyzer.plt"}
+    ]
   end
 
   defp elixirc_paths(:test), do: ["lib", "test/support"]
