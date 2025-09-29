@@ -10,6 +10,15 @@ defmodule DCATR.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
       dialyzer: dialyzer(),
+      test_coverage: [
+        summary: [threshold: 100],
+        ignore_modules: [
+          # Generated Grax.Schema.Registerable modules
+          ~r/^Grax\.Schema\.Registerable\..*/,
+          # RDF.Vocabulary.Namespace generated module
+          DCATR.NS.DCATR
+        ]
+      ],
       aliases: aliases(),
       preferred_cli_env: [
         check: :test
@@ -55,7 +64,7 @@ defmodule DCATR.MixProject do
         "deps.unlock --check-unused",
         "compile --all-warnings --warnings-as-errors",
         "format --check-formatted",
-        "test --warnings-as-errors",
+        "test --cover --warnings-as-errors",
         "credo"
       ]
     ]
