@@ -18,7 +18,7 @@ dcatr:Service a rdfs:Class, owl:Class
         ; rdfs:subClassOf dcat:DataService
         ; owl:disjointWith dcatr:Repository, dcatr:Dataset
         ; rdfs:label "Service"
-        ; rdfs:comment "A dcatr:Service is a composition of a dcatr:Repository in a specific dcatr:Store."
+        ; rdfs:comment "A dcatr:Service represents the local configuration and runtime for accessing a dcatr:Repository. Multiple services can serve the same repository with different configurations."
 .
     
     dcatr:serviceRepository a rdf:Property, owl:ObjectProperty, owl:FunctionalProperty
@@ -28,7 +28,15 @@ dcatr:Service a rdfs:Class, owl:Class
             ; rdfs:label "service repository"
             ; rdfs:comment "Links a service to its repository."
     .
-    
+
+    dcatr:serviceLocalData a rdf:Property, owl:ObjectProperty, owl:FunctionalProperty
+            ; rdfs:domain dcatr:Service
+            ; rdfs:range  dcatr:ServiceData
+            ; rdfs:label "service local data"
+            ; rdfs:comment "Links a service to its local data catalog (usually a blank node) containing service-specific graphs not distributed with the repository."
+    .
+
+
 ##########################################################################
 # Repository
 ##########################################################################
@@ -48,13 +56,179 @@ dcatr:Repository a rdfs:Class, owl:Class
             ; rdfs:comment "Links a repository to its primary dataset."
     .
 
+    dcatr:repositorySystemGraph a rdf:Property, owl:ObjectProperty
+            ; rdfs:subPropertyOf dcat:dataset
+            ; rdfs:domain dcatr:Repository
+            ; rdfs:range  dcatr:SystemGraph
+            ; rdfs:label "repository system graph"
+            ; rdfs:comment "Links a repository to its system graphs that are distributed with the repository (like history or application-specific operational graphs)."
+    .
+
+    dcatr:repositoryManifest a rdf:Property, owl:ObjectProperty, owl:FunctionalProperty
+            ; rdfs:subPropertyOf dcat:dataset
+            ; rdfs:domain dcatr:Repository
+            ; rdfs:range  dcatr:RepositoryManifestGraph
+            ; rdfs:label "repository manifest"
+            ; rdfs:comment "Links a repository to its manifest graph containing the DCAT descriptions and configuration of the repository itself."
+    .
+
+
+##########################################################################
+# ServiceData
+##########################################################################
+
+dcatr:ServiceData a rdfs:Class, owl:Class
+        ; rdfs:subClassOf dcat:Catalog
+        ; owl:disjointWith dcatr:Service, dcatr:Repository, dcatr:Dataset
+        ; rdfs:label "Service Data"
+        ; rdfs:comment "Local catalog for service-specific graphs that are not distributed with the repository. Usually instantiated as a blank node, but can have an explicit URI if needed."
+.
+
+    dcatr:serviceManifestGraph a rdf:Property, owl:ObjectProperty, owl:FunctionalProperty
+            ; rdfs:subPropertyOf dcat:dataset
+            ; rdfs:domain dcatr:ServiceData
+            ; rdfs:range  dcatr:ServiceManifestGraph
+            ; rdfs:label "service manifest graph"
+            ; rdfs:comment "Service-specific configuration graph, local to this service instance."
+    .
+
+    dcatr:serviceWorkingGraph a rdf:Property, owl:ObjectProperty
+            ; rdfs:subPropertyOf dcat:dataset
+            ; rdfs:domain dcatr:ServiceData
+            ; rdfs:range  dcatr:WorkingGraph
+            ; rdfs:label "service working graph"
+            ; rdfs:comment "Temporary working graphs local to this service instance."
+    .
+
+    dcatr:serviceSystemGraph a rdf:Property, owl:ObjectProperty
+            ; rdfs:subPropertyOf dcat:dataset
+            ; rdfs:domain dcatr:ServiceData
+            ; rdfs:range  dcatr:SystemGraph
+            ; rdfs:label "service system graph"
+            ; rdfs:comment "Service-local system graphs not distributed with the repository."
+    .
+
 ##########################################################################
 # Dataset
 ##########################################################################
 
 dcatr:Dataset a rdfs:Class, owl:Class
-        ; rdfs:subClassOf dcat:Dataset
+        ; rdfs:subClassOf dcat:Catalog
         ; owl:disjointWith dcatr:Service, dcatr:Repository
         ; rdfs:label "Dataset"
-        ; rdfs:comment "Represents the RDF dataset within a DCAT-R repository with actual user data."
+        ; rdfs:comment "Represents the RDF dataset within a DCAT-R repository. It is modeled as a DCAT catalog of graphs."
 .
+
+    dcatr:dataGraph a rdf:Property, owl:ObjectProperty
+            ; rdfs:subPropertyOf dcat:dataset
+            ; rdfs:domain dcatr:Dataset
+            ; rdfs:range  dcatr:DataGraph
+            ; rdfs:label "data graph"
+            ; rdfs:comment "Links a dataset to its constituent data graphs. Only DataGraphs (user data) belong to the Dataset; SystemGraphs are linked directly to the Repository."
+    .
+
+
+##########################################################################
+# Graph
+##########################################################################
+
+dcatr:Graph a rdfs:Class, owl:Class
+        ; rdfs:subClassOf dcat:Dataset
+        ; rdfs:label "Graph"
+        ; rdfs:comment "Abstract base class for all graphs in a DCAT-R repository. Every graph must belong to exactly one of the four concrete subclasses: DataGraph (user data), ManifestGraph (DCAT-R configuration), SystemGraph (system mechanisms), or WorkingGraph (temporary working areas)."
+        ; owl:equivalentClass [
+            owl:unionOf (dcatr:DataGraph dcatr:ManifestGraph dcatr:SystemGraph dcatr:WorkingGraph)
+        ]
+.
+
+    dcatr:DefaultGraph a rdfs:Class, owl:Class
+            ; rdfs:subClassOf dcatr:Graph
+            ; owl:disjointWith dcatr:NamedGraph
+            ; rdfs:label "Default Graph"
+            ; rdfs:comment "The default graph of an RDF dataset, which contains triples not assigned to any named graph. This classification is specific to a service instance and should be defined in the ServiceGraph, not in the repository metadata. Only one graph per dataset can be designated as DefaultGraph within a service."
+            ; skos:scopeNote "The classification of a graph as DefaultGraph is analogous to defining a localGraphName for a NamedGraph - both are service-specific configurations that belong in the ServiceGraph."
+    .
+
+    dcatr:NamedGraph a rdfs:Class, owl:Class
+            ; rdfs:subClassOf dcatr:Graph
+            ; owl:disjointWith dcatr:DefaultGraph
+            ; rdfs:label "Named Graph"
+            ; rdfs:comment "A named graph within an RDF dataset, identified by a graph name URI, that can potentially different than the actual graph URI, with the dcatr:localGraphName. However, this is specific to a service instance and should be defined in the ServiceGraph, not in the repository metadata."
+            ; skos:scopeNote "The NamedGraph classification belongs in the ServiceGraph alongside any localGraphName mappings, as both concern how the service accesses the graph."
+    .
+
+    dcatr:localGraphName a rdf:Property, owl:ObjectProperty
+            ; rdfs:domain dcatr:NamedGraph
+            ; rdfs:range rdfs:Resource
+            ; rdfs:label "local graph name"
+            ; rdfs:comment "The name/URI of this graph as used in this specific service instance. Should be unique within a service instance (enforced by implementations, not by OWL semantics). This allows service-specific renaming of graphs while preserving their original URIs."
+            ; skos:scopeNote "While this property should be unique within a service context, it is not declared as owl:InverseFunctionalProperty to avoid global inference conflicts between independent service instances."
+    .
+
+
+##########################################################################
+# Data Graphs (User Data)
+##########################################################################
+
+dcatr:DataGraph a rdfs:Class, owl:Class
+        ; rdfs:subClassOf dcatr:Graph
+        ; owl:disjointWith dcatr:ManifestGraph, dcatr:SystemGraph, dcatr:WorkingGraph
+        ; rdfs:label "Data Graph"
+        ; rdfs:comment "Graph containing the actual user data of the dataset. These are the primary content graphs that form the core of the repository's dataset, distinct from manifests, system data, and working areas. Data graphs are intended for distribution and represent the repository's main content."
+.
+
+##########################################################################
+# Manifest Graphs (DCAT-R Configuration)
+##########################################################################
+
+dcatr:ManifestGraph a rdfs:Class, owl:Class
+        ; rdfs:subClassOf dcatr:Graph
+        ; owl:disjointWith dcatr:DataGraph, dcatr:SystemGraph, dcatr:WorkingGraph
+        ; rdfs:label "Manifest Graph"
+        ; rdfs:comment "Base class for graphs containing DCAT-R configuration and descriptions. Unlike other graph types, manifest graphs have a known structure that DCAT-R understands and depends upon. They contain the DCAT descriptions and configuration that define the repository and service structure."
+.
+
+    dcatr:ServiceManifestGraph a rdfs:Class, owl:Class
+            ; rdfs:subClassOf dcatr:ManifestGraph
+            ; rdfs:label "Service Manifest Graph"
+            ; rdfs:comment "Manifest graph containing service-specific configuration and local settings. This graph is not replicated between service instances and contains the local configuration specific to one service instance."
+    .
+
+    dcatr:RepositoryManifestGraph a rdfs:Class, owl:Class
+            ; rdfs:subClassOf dcatr:ManifestGraph
+            ; rdfs:label "Repository Manifest Graph"
+            ; rdfs:comment """Manifest graph containing the DCAT descriptions of the repository itself, including metadata about the dataset and all graphs. This manifest is part of the repository distribution and shared across all service instances.
+
+DESIGN NOTE: This graph exhibits controlled self-reference - it describes the repository of which it is part. This is by design and analogous to metadata patterns in traditional information systems (e.g., a book's index being part of the book it describes).
+
+BEST PRACTICE: The graph MUST have its own URI distinct from the repository URI to avoid identifier collision. Recommended URI patterns:
+- {repository-uri}/manifest
+- {repository-uri}#manifest
+- {repository-base}/catalog/manifest
+
+The self-reference is managed through the dcatr:repositoryManifest property which explicitly links the repository to its manifest graph. This pattern acknowledges that metadata about a system can be part of that system while maintaining clear boundaries through URI separation."""
+    .
+
+##########################################################################
+# Working Graphs
+##########################################################################
+
+dcatr:WorkingGraph a rdfs:Class, owl:Class
+        ; rdfs:subClassOf dcatr:Graph
+        ; owl:disjointWith dcatr:DataGraph, dcatr:ManifestGraph, dcatr:SystemGraph
+        ; rdfs:label "Working Graph"
+        ; rdfs:comment "Service-local graph not included in distributions. Used for drafts, experiments, temporary work, cache graphs, import/export buffers, personal sandboxes, or validation graphs. Working graphs belong to the ServiceData catalog and are never part of repository distributions."
+.
+
+
+##########################################################################
+# System Graphs
+##########################################################################
+
+dcatr:SystemGraph a rdfs:Class, owl:Class
+        ; rdfs:subClassOf dcatr:Graph
+        ; owl:disjointWith dcatr:DataGraph, dcatr:ManifestGraph, dcatr:WorkingGraph
+        ; rdfs:label "System Graph"
+        ; rdfs:comment "Base class for system-specific operational graphs that implement repository mechanisms such as version history, indexes, or application-specific operational data. System graphs are distinct from manifest graphs (which contain configuration) and are typically distributed as part of the repository."
+.
+

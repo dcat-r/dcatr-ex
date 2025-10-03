@@ -1,0 +1,81 @@
+defmodule DCATR.DatasetTest do
+  use DCATR.Case
+
+  doctest DCATR.Dataset
+
+  alias DCATR.Dataset
+
+  describe "build/1,2" do
+    test "without graphs" do
+      assert Dataset.build(EX.Dataset1) ==
+               {:ok, %Dataset{__id__: RDF.iri(EX.Dataset1), graphs: []}}
+    end
+
+    test "with data graphs" do
+      graphs = example_data_graphs()
+
+      assert Dataset.build(EX.Dataset1, graphs: graphs) ==
+               {:ok, %Dataset{__id__: RDF.iri(EX.Dataset1), graphs: graphs}}
+    end
+  end
+
+  describe "load/2" do
+    test "minimal dataset" do
+      assert Dataset.load(RDF.graph(), EX.Dataset1) == {:ok, Dataset.build!(EX.Dataset1)}
+    end
+
+    test "dataset with all properties" do
+      assert RDF.graph([
+               {EX.DataGraph1, RDF.type(), DCATR.DataGraph},
+               {EX.DataGraph2, RDF.type(), DCATR.DataGraph},
+               {EX.Dataset1, RDF.type(), DCATR.Dataset},
+               {EX.Dataset1, DCATR.dataGraph(), [EX.DataGraph1, EX.DataGraph2]}
+             ])
+             |> Dataset.load(EX.Dataset1) == {:ok, example_dataset()}
+    end
+  end
+
+  test "Grax.to_rdf/1" do
+    graph1 = data_graph()
+    graph2 = data_graph()
+    dataset = dataset(graphs: [graph1, graph2])
+
+    rdf = Grax.to_rdf!(dataset)
+
+    assert RDF.Graph.include?(rdf, {dataset.__id__, RDF.type(), DCATR.Dataset})
+    assert RDF.Graph.include?(rdf, {dataset.__id__, DCATR.dataGraph(), graph1.__id__})
+    assert RDF.Graph.include?(rdf, {dataset.__id__, DCATR.dataGraph(), graph2.__id__})
+  end
+
+  describe "graph/2" do
+    setup :example_dataset_scenario
+
+    test "returns graph by IRI", %{dataset: dataset, data_graphs: [graph1 | _]} do
+      assert Dataset.graph(dataset, graph1.__id__) == graph1
+      assert Dataset.graph(dataset, EX.DataGraph1) == graph1
+    end
+
+    test "returns graph by URI string", %{dataset: dataset, data_graphs: [_, graph2]} do
+      uri_string = to_string(graph2.__id__)
+      assert Dataset.graph(dataset, uri_string) == graph2
+    end
+
+    test "returns nil for non-existent graph", %{dataset: dataset} do
+      assert Dataset.graph(dataset, EX.NonExistent) == nil
+    end
+
+    test "handles dataset without graphs" do
+      assert Dataset.graph(dataset(), EX.Any) == nil
+    end
+  end
+
+  describe "graphs/1" do
+    test "returns all graphs" do
+      assert Dataset.graphs(example_dataset()) == example_data_graphs()
+    end
+
+    test "returns empty list for dataset without graphs" do
+      assert Dataset.graphs(dataset()) == []
+    end
+  end
+end

@@ -1,5 +1,5 @@
 defmodule DCATRTest do
-  use DCATR.Test.Case
+  use DCATR.Case
 
   doctest DCATR
 

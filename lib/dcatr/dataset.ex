@@ -1,9 +1,53 @@
 defmodule DCATR.Dataset do
+  @moduledoc """
+  A catalog of the data graphs within a `DCATR.Repository`.
+
+  Each repository contains exactly one such dataset as its primary data container,
+  modeled as a DCAT catalog of `DCATR.DataGraph`s.
+
+  ## Schema Mapping
+
+  This schema does not directly inherit from `DCAT.Catalog` in Grax to avoid
+  bloating the Elixir structs with all DCAT properties. Any DCAT metadata on a
+  dataset is still preserved in the `__additional_statements__` field of the struct.
+  When needed, [Grax schema mapping](https://rdf-elixir.dev/grax/api.html#mapping-between-schemas)
+  allows accessing a dataset as a `dcat:Catalog` with all DCAT properties mapped
+  to struct fields via the `DCAT.Catalog` schema from DCAT.ex:
+
+      dataset = %DCATR.Dataset{
+        __id__: ~I<http://example.org/dataset1>,
+        __additional_statements__: %{
+          ~I<http://purl.org/dc/terms/title> => %{
+            ~L"My Dataset" => nil
+          }
+        }
+      }
+
+      catalog = DCAT.Catalog.from(dataset)
+      catalog.title
+      # => "My Dataset"
+
+      entity = PROV.Entity.from(dataset)
+  """
+
   use Grax.Schema
 
-  # We don't inherit from DCAT.Catalog directly, but by using Grax schema mapping
-  # a dataset can be accessed as a dcat:Catalog with all properties as Elixir fields
-  # via the DCAT.Catalog schema of DCAT.ex or similarly as a PROV.Entity schema of PROV.ex.
   schema DCATR.Dataset do
+    link graphs: DCATR.dataGraph(), type: list_of(DCATR.DataGraph)
   end
+
+  @doc """
+  Returns a `DCATR.DataGraph` by id.
+  """
+  @spec graph(t(), RDF.IRI.coercible()) :: DCATR.DataGraph.t() | nil
+  def graph(%_dataset_type{graphs: graphs}, id) do
+    iri = RDF.iri(id)
+    Enum.find(graphs, fn graph -> graph.__id__ == iri end)
+  end
+
+  @doc """
+  Returns all `DCATR.DataGraph`s in the dataset.
+  """
+  @spec graphs(t()) :: [DCATR.DataGraph.t()]
+  def graphs(%_dataset_type{graphs: graphs}), do: graphs
 end

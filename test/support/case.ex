@@ -1,4 +1,4 @@
-defmodule DCATR.Test.Case do
+defmodule DCATR.Case do
   @moduledoc """
   Common `ExUnit.CaseTemplate` for DCAT-R tests.
   """
@@ -13,12 +13,13 @@ defmodule DCATR.Test.Case do
       use RDF
 
       import unquote(__MODULE__)
-      import RDF, only: [iri: 1, literal: 1, bnode: 1]
+      import RDF, only: [iri: 1, literal: 1, bnode: 1, bnode: 0]
+      import DCATR.TestFactories
 
-      alias RDF.{IRI, BlankNode, Literal, Graph}
+      alias RDF.{IRI, BlankNode, Literal}
 
       alias unquote(__MODULE__).EX
-      @compile {:no_warn_undefined, DCAT.Test.Case.EX}
+      @compile {:no_warn_undefined, DCATR.Case.EX}
     end
   end
 end

@@ -16,7 +16,12 @@ defmodule DCATR.MixProject do
           # Generated Grax.Schema.Registerable modules
           ~r/^Grax\.Schema\.Registerable\..*/,
           # RDF.Vocabulary.Namespace generated module
-          DCATR.NS.DCATR
+          DCATR.NS.DCATR,
+          # Exception modules
+          DCATR.DuplicateGraphNameError,
+          DCATR.GraphNotFoundError,
+          # Test factories
+          DCATR.TestFactories
         ]
       ],
       aliases: aliases(),
