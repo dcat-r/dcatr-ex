@@ -24,7 +24,10 @@ defmodule DCATR.ServiceData do
   use Grax.Schema
 
   schema DCATR.ServiceData do
-    link manifest_graph: DCATR.serviceManifestGraph(), type: DCATR.ServiceManifestGraph
+    link manifest_graph: DCATR.serviceManifestGraph(),
+         type: DCATR.ServiceManifestGraph,
+         required: true
+
     link working_graphs: DCATR.serviceWorkingGraph(), type: list_of(DCATR.WorkingGraph)
     link system_graphs: DCATR.serviceSystemGraph(), type: list_of(DCATR.SystemGraph)
   end
@@ -81,12 +84,8 @@ defmodule DCATR.ServiceData do
   end
 
   defp collect_graphs(service_data) do
-    (service_data.working_graphs ++ service_data.system_graphs)
-    |> maybe_add_graph(service_data.manifest_graph)
+    [service_data.manifest_graph | service_data.system_graphs ++ service_data.working_graphs]
   end
-
-  defp maybe_add_graph(graphs, nil), do: graphs
-  defp maybe_add_graph(graphs, graph), do: [graph | graphs]
 
   @doc """
   Returns all working graphs.

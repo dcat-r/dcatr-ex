@@ -26,16 +26,26 @@ defmodule DCATR.ServiceTest do
   describe "load/2" do
     test "minimal service" do
       assert RDF.graph([
-               {EX.Repository1, DCATR.repositoryDataset(), EX.Dataset1},
                {EX.Service1, DCATR.serviceRepository(), EX.Repository1},
-               {EX.Service1, DCATR.serviceLocalData(), EX.ServiceData1}
+               {EX.Service1, DCATR.serviceLocalData(), EX.ServiceData1},
+               {EX.Repository1, DCATR.repositoryDataset(), EX.Dataset1},
+               {EX.Repository1, DCATR.repositoryManifestGraph(), EX.RepositoryManifest},
+               {EX.ServiceData1, DCATR.serviceManifestGraph(), ~B<ServiceManifest>}
              ])
              |> Service.load(EX.Service1, depth: 99) ==
                {:ok,
                 Service.build!(EX.Service1,
                   repository:
-                    empty_repository(id: EX.Repository1, dataset: dataset(id: EX.Dataset1)),
-                  local_data: empty_service_data(id: EX.ServiceData1)
+                    repository(
+                      id: EX.Repository1,
+                      dataset: dataset(id: EX.Dataset1),
+                      manifest_graph: repository_manifest_graph(id: EX.RepositoryManifest)
+                    ),
+                  local_data:
+                    service_data(
+                      id: EX.ServiceData1,
+                      manifest_graph: service_manifest_graph(id: ~B<ServiceManifest>)
+                    )
                 )}
     end
 
@@ -51,7 +61,7 @@ defmodule DCATR.ServiceTest do
                {EX.SystemGraph2, RDF.type(), DCATR.SystemGraph},
                {EX.Repository1, RDF.type(), DCATR.Repository},
                {EX.Repository1, DCATR.repositoryDataset(), EX.Dataset1},
-               {EX.Repository1, DCATR.repositoryManifest(), EX.RepositoryManifest},
+               {EX.Repository1, DCATR.repositoryManifestGraph(), EX.RepositoryManifest},
                {EX.Repository1, DCATR.repositorySystemGraph(),
                 [EX.SystemGraph1, EX.SystemGraph2]},
                {EX.ServiceManifest, RDF.type(), DCATR.ServiceManifestGraph},
@@ -67,7 +77,7 @@ defmodule DCATR.ServiceTest do
                {EX.Service1, DCATR.serviceRepository(), EX.Repository1},
                {EX.Service1, DCATR.serviceLocalData(), EX.ServiceData1},
                {EX.WorkingGraph1, DCATR.localGraphName(), EX.WorkingGraph1Name},
-               {EX.ServiceManifest, DCATR.localGraphName(), RDF.bnode("ServiceManifest")},
+               {EX.ServiceManifest, DCATR.localGraphName(), ~B<ServiceManifest>},
                {EX.DataGraph2, DCATR.localGraphName(), RDF.bnode(:graph2)},
                {EX.DataGraph1, RDF.type(), DCATR.DefaultGraph}
              ])
@@ -139,7 +149,7 @@ defmodule DCATR.ServiceTest do
     end
 
     test "finds graph from local data by ID", %{service: service, service_manifest: manifest} do
-      assert Service.graph_by_id(service, RDF.bnode("ServiceManifest")) == manifest
+      assert Service.graph_by_id(service, ~B<ServiceManifest>) == manifest
     end
 
     test "returns nil for non-existent ID", %{service: service} do
@@ -227,17 +237,11 @@ defmodule DCATR.ServiceTest do
     test "returns graph name for :manifest selector when manifest has local name", %{
       service: service
     } do
-      assert Service.graph_name(service, :manifest) == RDF.bnode("ServiceManifest")
+      assert Service.graph_name(service, :manifest) == ~B<ServiceManifest>
     end
 
     test "returns nil for graph without graph name", %{service: service} do
       assert Service.graph_name(service, EX.RepositoryManifest) == nil
-    end
-
-    test "returns nil for :manifest selector when no manifest exists" do
-      service = service(local_data: empty_service_data())
-
-      assert Service.graph_name(service, :manifest) == nil
     end
   end
 

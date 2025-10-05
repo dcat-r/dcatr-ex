@@ -64,7 +64,7 @@ dcatr:Repository a rdfs:Class, owl:Class
             ; rdfs:comment "Links a repository to its system graphs that are distributed with the repository (like history or application-specific operational graphs)."
     .
 
-    dcatr:repositoryManifest a rdf:Property, owl:ObjectProperty, owl:FunctionalProperty
+    dcatr:repositoryManifestGraph a rdf:Property, owl:ObjectProperty, owl:FunctionalProperty
             ; rdfs:subPropertyOf dcat:dataset
             ; rdfs:domain dcatr:Repository
             ; rdfs:range  dcatr:RepositoryManifestGraph

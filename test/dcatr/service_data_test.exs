@@ -7,11 +7,13 @@ defmodule DCATR.ServiceDataTest do
 
   describe "build/1,2" do
     test "with IRI" do
-      assert ServiceData.build(EX.ServiceData1) ==
+      manifest_graph_id = RDF.bnode("service-manifest")
+
+      assert ServiceData.build(EX.ServiceData1, manifest_graph: manifest_graph_id) ==
                {:ok,
                 %ServiceData{
                   __id__: RDF.iri(EX.ServiceData1),
-                  manifest_graph: nil,
+                  manifest_graph: manifest_graph_id,
                   working_graphs: [],
                   system_graphs: []
                 }}
@@ -19,7 +21,16 @@ defmodule DCATR.ServiceDataTest do
 
     test "with blank node" do
       bnode = bnode()
-      assert ServiceData.build(bnode) == {:ok, %ServiceData{__id__: bnode}}
+      manifest = service_manifest_graph()
+
+      assert ServiceData.build(bnode, manifest_graph: manifest) ==
+               {:ok,
+                %ServiceData{
+                  __id__: bnode,
+                  manifest_graph: manifest,
+                  working_graphs: [],
+                  system_graphs: []
+                }}
     end
 
     test "with all graphs given" do
@@ -47,23 +58,26 @@ defmodule DCATR.ServiceDataTest do
 
   describe "load/2" do
     test "minimal service data" do
-      assert ServiceData.load(RDF.graph(), EX.ServiceData1) ==
-               {:ok, ServiceData.build!(EX.ServiceData1)}
+      manifest_graph_id = ~B<ServiceManifest>
+
+      assert RDF.graph([{EX.ServiceData1, DCATR.serviceManifestGraph(), manifest_graph_id}])
+             |> ServiceData.load(EX.ServiceData1, depth: 99) ==
+               {:ok,
+                ServiceData.build!(EX.ServiceData1,
+                  manifest_graph: service_manifest_graph(id: manifest_graph_id)
+                )}
     end
 
     test "service data with all properties" do
-      manifest_bn = RDF.bnode(:ServiceManifest)
-      working1_bn = RDF.bnode(:WorkingGraph1)
-      working2_bn = RDF.bnode(:WorkingGraph2)
-
       assert RDF.graph([
-               {manifest_bn, RDF.type(), DCATR.ServiceManifestGraph},
-               {working1_bn, RDF.type(), DCATR.WorkingGraph},
-               {working2_bn, RDF.type(), DCATR.WorkingGraph},
+               {~B<ServiceManifest>, RDF.type(), DCATR.ServiceManifestGraph},
+               {~B<WorkingGraph1>, RDF.type(), DCATR.WorkingGraph},
+               {~B<WorkingGraph2>, RDF.type(), DCATR.WorkingGraph},
                {EX.LocalSystemGraph, RDF.type(), DCATR.SystemGraph},
                {EX.ServiceData1, RDF.type(), DCATR.ServiceData},
-               {EX.ServiceData1, DCATR.serviceManifestGraph(), manifest_bn},
-               {EX.ServiceData1, DCATR.serviceWorkingGraph(), [working1_bn, working2_bn]},
+               {EX.ServiceData1, DCATR.serviceManifestGraph(), ~B<ServiceManifest>},
+               {EX.ServiceData1, DCATR.serviceWorkingGraph(),
+                [~B<WorkingGraph1>, ~B<WorkingGraph2>]},
                {EX.ServiceData1, DCATR.serviceSystemGraph(), EX.LocalSystemGraph}
              ])
              |> ServiceData.load(EX.ServiceData1, depth: 99) == {:ok, example_service_data()}
@@ -119,7 +133,7 @@ defmodule DCATR.ServiceDataTest do
       local_system_graphs: [system1]
     } do
       assert ServiceData.graph(service_data, manifest.__id__) == manifest
-      assert ServiceData.graph(service_data, RDF.bnode("ServiceManifest")) == manifest
+      assert ServiceData.graph(service_data, ~B<ServiceManifest>) == manifest
       assert ServiceData.graph(service_data, working1.__id__) == working1
       assert ServiceData.graph(service_data, RDF.bnode(:WorkingGraph2)) == working2
       assert ServiceData.graph(service_data, EX.LocalSystemGraph) == system1
@@ -128,10 +142,6 @@ defmodule DCATR.ServiceDataTest do
 
     test "returns nil for non-existent graph", %{service_data: service_data} do
       assert ServiceData.graph(service_data, EX.NonExistent) == nil
-    end
-
-    test "handles ServiceData without manifest" do
-      assert ServiceData.graph(empty_service_data(), :manifest) == nil
     end
   end
 
@@ -214,10 +224,6 @@ defmodule DCATR.ServiceDataTest do
     test "returns empty list for unknown type filter", %{service_data: service_data} do
       assert ServiceData.graphs(service_data, type: :unknown) == []
     end
-
-    test "handles empty ServiceData" do
-      assert empty_service_data() |> ServiceData.graphs() == []
-    end
   end
 
   describe "working_graphs/1" do
@@ -258,12 +264,6 @@ defmodule DCATR.ServiceDataTest do
 
     test "returns false for non-existent graphs", %{service_data: service_data} do
       refute ServiceData.has_graph?(service_data, EX.NonExistent)
-    end
-
-    test "handles ServiceData without any graphs" do
-      service_data = empty_service_data()
-      refute ServiceData.has_graph?(service_data, :manifest)
-      refute ServiceData.has_graph?(service_data, EX.Any)
     end
   end
 end

@@ -41,7 +41,11 @@ defmodule DCATR.Repository do
 
   schema DCATR.Repository do
     link dataset: DCATR.repositoryDataset(), type: DCATR.Dataset, required: true
-    link manifest_graph: DCATR.repositoryManifest(), type: DCATR.RepositoryManifestGraph
+
+    link manifest_graph: DCATR.repositoryManifestGraph(),
+         type: DCATR.RepositoryManifestGraph,
+         required: true
+
     link system_graphs: DCATR.repositorySystemGraph(), type: list_of(DCATR.SystemGraph)
   end
 
@@ -90,12 +94,8 @@ defmodule DCATR.Repository do
   end
 
   defp collect_graphs(repository) do
-    (Dataset.graphs(repository.dataset) ++ repository.system_graphs)
-    |> maybe_add_graph(repository.manifest_graph)
+    [repository.manifest_graph | repository.system_graphs ++ Dataset.graphs(repository.dataset)]
   end
-
-  defp maybe_add_graph(graphs, nil), do: graphs
-  defp maybe_add_graph(graphs, graph), do: [graph | graphs]
 
   @doc """
   Returns local system graphs.

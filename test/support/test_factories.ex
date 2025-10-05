@@ -143,7 +143,7 @@ defmodule DCATR.TestFactories do
   end
 
   def example_service_manifest_graph(opts \\ []) do
-    id = Keyword.get(opts, :id, RDF.bnode(:ServiceManifest))
+    id = Keyword.get(opts, :id, ~B<ServiceManifest>)
     service_manifest_graph(id: id)
   end
 
@@ -210,17 +210,6 @@ defmodule DCATR.TestFactories do
     end)
   end
 
-  def empty_repository(opts \\ []) do
-    {id, opts} = Keyword.pop(opts, :id, generate_id("Repository"))
-
-    opts = Keyword.put_new(opts, :dataset, dataset())
-
-    case Repository.build(id, opts) do
-      {:ok, repo} -> repo
-      {:error, error} -> raise error
-    end
-  end
-
   def example_repository(opts \\ []) do
     id = Keyword.get(opts, :id, EX.Repository1)
     ds = Keyword.get(opts, :dataset, example_dataset())
@@ -261,15 +250,6 @@ defmodule DCATR.TestFactories do
         {:error, error} -> raise error
       end
     end)
-  end
-
-  def empty_service_data(opts \\ []) do
-    id = Keyword.get(opts, :id, bnode())
-
-    case ServiceData.build(id) do
-      {:ok, data} -> data
-      {:error, error} -> raise error
-    end
   end
 
   def example_service_data(opts \\ []) do
@@ -383,9 +363,9 @@ defmodule DCATR.TestFactories do
   def graph_name_mapping(true) do
     %{
       EX.DataGraph1 => :default,
-      EX.DataGraph2 => RDF.bnode(:graph2),
-      RDF.bnode(:WorkingGraph1) => EX.WorkingGraph1Name,
-      RDF.bnode(:ServiceManifest) => RDF.bnode("ServiceManifest")
+      EX.DataGraph2 => ~B<graph2>,
+      ~B<WorkingGraph1> => EX.WorkingGraph1Name,
+      ~B<ServiceManifest> => ~B<ServiceManifest>
     }
   end
 

@@ -42,9 +42,16 @@ defmodule DCATR.RepositoryTest do
 
   describe "load/2" do
     test "minimal repository" do
-      assert RDF.graph({EX.Repository1, DCATR.repositoryDataset(), EX.Dataset1})
+      assert EX.Repository1
+             |> DCATR.repositoryDataset(EX.Dataset1)
+             |> DCATR.repositoryManifestGraph(EX.RepositoryManifest)
+             |> RDF.graph()
              |> Repository.load(EX.Repository1) ==
-               {:ok, Repository.build!(EX.Repository1, dataset: dataset(id: EX.Dataset1))}
+               {:ok,
+                Repository.build!(EX.Repository1,
+                  dataset: dataset(id: EX.Dataset1),
+                  manifest_graph: repository_manifest_graph(id: EX.RepositoryManifest)
+                )}
     end
 
     test "repository with all properties" do
@@ -58,7 +65,7 @@ defmodule DCATR.RepositoryTest do
                {EX.SystemGraph2, RDF.type(), DCATR.SystemGraph},
                {EX.Repository1, RDF.type(), DCATR.Repository},
                {EX.Repository1, DCATR.repositoryDataset(), EX.Dataset1},
-               {EX.Repository1, DCATR.repositoryManifest(), EX.RepositoryManifest},
+               {EX.Repository1, DCATR.repositoryManifestGraph(), EX.RepositoryManifest},
                {EX.Repository1, DCATR.repositorySystemGraph(), [EX.SystemGraph1, EX.SystemGraph2]}
              ])
              |> Repository.load(EX.Repository1, depth: 99) == {:ok, example_repository()}
@@ -84,7 +91,7 @@ defmodule DCATR.RepositoryTest do
 
     assert RDF.Graph.include?(
              rdf,
-             {repo.__id__, DCATR.repositoryManifest(), manifest_graph.__id__}
+             {repo.__id__, DCATR.repositoryManifestGraph(), manifest_graph.__id__}
            )
 
     assert RDF.Graph.include?(
@@ -121,12 +128,6 @@ defmodule DCATR.RepositoryTest do
       assert Repository.graph(repo, EX.DataGraph1) == data_graph1
     end
 
-    test "handles empty repository" do
-      repo = empty_repository()
-      assert Repository.graph(repo, :manifest) == nil
-      assert Repository.graph(repo, EX.NonExistentSystemGraph) == nil
-    end
-
     test "returns nil for non-existent graph", %{repo: repo} do
       assert Repository.graph(repo, EX.NonExistent) == nil
     end
@@ -148,14 +149,6 @@ defmodule DCATR.RepositoryTest do
       assert repo_manifest in graphs
       assert system_graph1 in graphs
       assert system_graph2 in graphs
-    end
-
-    test "handles repository without manifest" do
-      dataset = dataset()
-      repo = empty_repository(dataset: dataset)
-
-      graphs = Repository.graphs(repo)
-      assert Enum.all?(dataset.graphs, &(&1 in graphs))
     end
 
     test "filters by type :data", %{repo: repo, data_graphs: data_graphs} do
