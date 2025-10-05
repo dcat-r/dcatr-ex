@@ -38,7 +38,10 @@ defmodule DCATR.ServiceData do
   @spec graph(t(), id_or_selector()) :: DCATR.Graph.t() | nil
   def graph(service_data, id_or_selector)
   def graph(%_{manifest_graph: manifest_graph}, :manifest), do: manifest_graph
-  def graph(%_{} = service_data, uri), do: find_graph_by_id(service_data, RDF.iri(uri))
+
+  def graph(%_{} = service_data, id) do
+    find_graph_by_id(service_data, RDF.coerce_graph_name(id))
+  end
 
   defp find_graph_by_id(%_{manifest_graph: %{__id__: id} = graph}, id), do: graph
 

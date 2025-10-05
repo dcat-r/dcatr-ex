@@ -5,6 +5,8 @@ defmodule DCATR.ServiceManifestGraph do
   Service manifest graphs contain service-specific configuration and local settings.
   These graphs are not replicated between service instances and contain the local
   configuration specific to one service instance.
+
+  Blank nodes are allowed as graph IDs for service manifest graphs.
   """
 
   use Grax.Schema

@@ -113,26 +113,17 @@ defmodule DCATR.ServiceTest do
       assert Service.graph(service, :manifest) == manifest
     end
 
-    test "finds working graph by direct ID", %{service: service, working_graphs: [graph | _]} do
-      assert Service.graph(service, EX.WorkingGraph1) == graph
-    end
-
-    test "finds repository system graph by direct ID", %{
+    test "finds graph by direct ID", %{
       service: service,
-      system_graphs: [graph | _]
-    } do
-      assert Service.graph(service, EX.SystemGraph1) == graph
-    end
-
-    test "finds local system graph by direct ID", %{
-      service: service,
+      data_graphs: [data_graph | _],
+      working_graphs: [working_graph | _],
+      system_graphs: [graph | _],
       local_system_graphs: [local_system | _]
     } do
+      assert Service.graph(service, EX.DataGraph1) == data_graph
+      assert Service.graph(service, RDF.bnode(:WorkingGraph1)) == working_graph
+      assert Service.graph(service, RDF.iri(EX.SystemGraph1)) == graph
       assert Service.graph(service, EX.LocalSystemGraph) == local_system
-    end
-
-    test "finds graph by direct ID", %{service: service, data_graphs: [graph | _]} do
-      assert Service.graph(service, EX.DataGraph1) == graph
     end
 
     test "returns nil for non-existent graph", %{service: service} do
@@ -148,7 +139,7 @@ defmodule DCATR.ServiceTest do
     end
 
     test "finds graph from local data by ID", %{service: service, service_manifest: manifest} do
-      assert Service.graph_by_id(service, EX.ServiceManifest) == manifest
+      assert Service.graph_by_id(service, RDF.bnode("ServiceManifest")) == manifest
     end
 
     test "returns nil for non-existent ID", %{service: service} do
@@ -227,7 +218,10 @@ defmodule DCATR.ServiceTest do
     end
 
     test "returns graph name for graph ID", %{service: service} do
-      assert Service.graph_name(service, EX.WorkingGraph1) == RDF.iri(EX.WorkingGraph1Name)
+      assert Service.graph_name(service, EX.DataGraph2) == RDF.bnode(:graph2)
+
+      assert Service.graph_name(service, RDF.bnode("WorkingGraph1")) ==
+               RDF.iri(EX.WorkingGraph1Name)
     end
 
     test "returns graph name for :manifest selector when manifest has local name", %{

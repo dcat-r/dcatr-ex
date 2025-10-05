@@ -4,6 +4,8 @@ defmodule DCATR.WorkingGraph do
 
   Working graphs are service-local and form a temporary, non-published area.
   Used for drafts, experiments, temporary work etc.
+
+  Blank nodes are allowed as graph IDs for working graphs.
   """
 
   use Grax.Schema

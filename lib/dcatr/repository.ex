@@ -54,7 +54,10 @@ defmodule DCATR.Repository do
   @spec graph(t(), id_or_selector()) :: DCATR.Graph.t() | nil
   def graph(repository, id_or_selector)
   def graph(%_{manifest_graph: manifest_graph}, :manifest), do: manifest_graph
-  def graph(%_{} = repository, uri), do: find_graph_by_id(repository, RDF.iri(uri))
+
+  def graph(%_{} = repository, id) do
+    find_graph_by_id(repository, RDF.coerce_graph_name(id))
+  end
 
   defp find_graph_by_id(%_{manifest_graph: %{__id__: id} = graph}, id), do: graph
 

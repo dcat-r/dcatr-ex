@@ -138,12 +138,12 @@ defmodule DCATR.TestFactories do
   # ServiceManifestGraph
 
   def service_manifest_graph(opts \\ []) do
-    id = Keyword.get(opts, :id, generate_id("ServiceManifest"))
+    id = Keyword.get(opts, :id, bnode())
     ServiceManifestGraph.build!(id)
   end
 
   def example_service_manifest_graph(opts \\ []) do
-    id = Keyword.get(opts, :id, EX.ServiceManifest)
+    id = Keyword.get(opts, :id, RDF.bnode(:ServiceManifest))
     service_manifest_graph(id: id)
   end
 
@@ -151,18 +151,18 @@ defmodule DCATR.TestFactories do
   # WorkingGraph
 
   def working_graph(opts \\ []) do
-    id = Keyword.get(opts, :id, generate_id("WorkingGraph"))
+    id = Keyword.get(opts, :id, bnode())
     WorkingGraph.build!(id)
   end
 
   def example_working_graph(opts \\ []) do
-    id = Keyword.get(opts, :id, EX.WorkingGraph1)
+    id = Keyword.get(opts, :id, RDF.bnode(:WorkingGraph1))
     working_graph(id: id)
   end
 
   def example_working_graphs(n \\ 2) do
     for i <- 1..n do
-      working_graph(id: apply(EX, String.to_atom("WorkingGraph#{i}"), []))
+      working_graph(id: RDF.bnode(String.to_atom("WorkingGraph#{i}")))
     end
   end
 
@@ -367,15 +367,14 @@ defmodule DCATR.TestFactories do
     {names, ids} =
       Enum.reduce(mapping, {%{}, %{}}, fn
         {graph_id, :default}, {names_acc, ids_acc} ->
-          graph_iri = RDF.iri(graph_id)
-          {Map.put(names_acc, :default, graph_iri), Map.put(ids_acc, graph_iri, :default)}
+          graph_id = RDF.coerce_graph_name(graph_id)
+          {Map.put(names_acc, :default, graph_id), Map.put(ids_acc, graph_id, :default)}
 
         {graph_id, local_name}, {names_acc, ids_acc} ->
-          graph_iri = RDF.iri(graph_id)
-          local_name_coerced = RDF.coerce_graph_name(local_name)
+          graph_id = RDF.coerce_graph_name(graph_id)
+          local_name = RDF.coerce_graph_name(local_name)
 
-          {Map.put(names_acc, local_name_coerced, graph_iri),
-           Map.put(ids_acc, graph_iri, local_name_coerced)}
+          {Map.put(names_acc, local_name, graph_id), Map.put(ids_acc, graph_id, local_name)}
       end)
 
     %{graph_names: names, graph_names_by_id: ids}
@@ -385,8 +384,8 @@ defmodule DCATR.TestFactories do
     %{
       EX.DataGraph1 => :default,
       EX.DataGraph2 => RDF.bnode(:graph2),
-      EX.WorkingGraph1 => EX.WorkingGraph1Name,
-      EX.ServiceManifest => RDF.bnode("ServiceManifest")
+      RDF.bnode(:WorkingGraph1) => EX.WorkingGraph1Name,
+      RDF.bnode(:ServiceManifest) => RDF.bnode("ServiceManifest")
     }
   end
 

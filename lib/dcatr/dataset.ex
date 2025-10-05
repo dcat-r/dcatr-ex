@@ -41,8 +41,8 @@ defmodule DCATR.Dataset do
   """
   @spec graph(t(), RDF.IRI.coercible()) :: DCATR.DataGraph.t() | nil
   def graph(%_dataset_type{graphs: graphs}, id) do
-    iri = RDF.iri(id)
-    Enum.find(graphs, fn graph -> graph.__id__ == iri end)
+    graph_id = RDF.coerce_graph_name(id)
+    Enum.find(graphs, fn graph -> graph.__id__ == graph_id end)
   end
 
   @doc """

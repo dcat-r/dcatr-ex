@@ -90,12 +90,8 @@ defmodule DCATR.Service do
     if service.local_data, do: ServiceData.graph(service.local_data, :manifest)
   end
 
-  def graph(%_service_type{} = service, %RDF.BlankNode{} = bnode) do
-    graph_by_name(service, bnode)
-  end
-
-  def graph(%_service_type{} = service, iri) do
-    graph_by_name(service, iri) || graph_by_id(service, iri)
+  def graph(%_service_type{} = service, id_or_name) do
+    graph_by_name(service, id_or_name) || graph_by_id(service, id_or_name)
   end
 
   @doc """
@@ -103,9 +99,10 @@ defmodule DCATR.Service do
   """
   @spec graph_by_id(t(), RDF.IRI.coercible()) :: DCATR.Graph.t() | nil
   def graph_by_id(%_service_type_{repository: repository, local_data: local_data}, id) do
-    iri = RDF.iri(id)
+    graph_id = RDF.coerce_graph_name(id)
 
-    Repository.graph(repository, iri) || (local_data && ServiceData.graph(local_data, iri))
+    Repository.graph(repository, graph_id) ||
+      (local_data && ServiceData.graph(local_data, graph_id))
   end
 
   @doc """
@@ -155,7 +152,7 @@ defmodule DCATR.Service do
   def graph_name(%_service_type{} = service, %{__id__: id}), do: graph_name(service, id)
 
   def graph_name(%_service_type{graph_names_by_id: names_by_id}, id) do
-    Map.get(names_by_id, RDF.iri(id))
+    Map.get(names_by_id, RDF.coerce_graph_name(id))
   end
 
   @doc """

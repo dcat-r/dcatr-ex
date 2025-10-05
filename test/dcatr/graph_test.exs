@@ -107,14 +107,20 @@ defmodule DCATR.GraphTest do
     graph = Graph.build!(EX.Graph)
     assert Grax.to_rdf(graph) == {:ok, RDF.graph({graph.__id__, RDF.type(), DCATR.Graph})}
 
-    assert Grax.to_rdf(example_data_graph()) ==
-             {:ok, RDF.graph({EX.DataGraph1, RDF.type(), DCATR.DataGraph})}
+    data_graph = example_data_graph()
 
-    assert Grax.to_rdf(example_working_graph()) ==
-             {:ok, RDF.graph({EX.WorkingGraph1, RDF.type(), DCATR.WorkingGraph})}
+    assert Grax.to_rdf(data_graph) ==
+             {:ok, RDF.graph({data_graph.__id__, RDF.type(), DCATR.DataGraph})}
 
-    assert Grax.to_rdf(example_service_manifest_graph()) ==
-             {:ok, RDF.graph({EX.ServiceManifest, RDF.type(), DCATR.ServiceManifestGraph})}
+    working_graph = example_working_graph()
+
+    assert Grax.to_rdf(working_graph) ==
+             {:ok, RDF.graph({working_graph.__id__, RDF.type(), DCATR.WorkingGraph})}
+
+    service_manifest = example_service_manifest_graph()
+
+    assert Grax.to_rdf(service_manifest) ==
+             {:ok, RDF.graph({service_manifest.__id__, RDF.type(), DCATR.ServiceManifestGraph})}
 
     assert Grax.to_rdf(example_repository_manifest_graph()) ==
              {:ok, RDF.graph({EX.RepositoryManifest, RDF.type(), DCATR.RepositoryManifestGraph})}

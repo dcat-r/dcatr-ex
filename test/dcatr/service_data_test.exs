@@ -52,15 +52,18 @@ defmodule DCATR.ServiceDataTest do
     end
 
     test "service data with all properties" do
+      manifest_bn = RDF.bnode(:ServiceManifest)
+      working1_bn = RDF.bnode(:WorkingGraph1)
+      working2_bn = RDF.bnode(:WorkingGraph2)
+
       assert RDF.graph([
-               {EX.ServiceManifest, RDF.type(), DCATR.ServiceManifestGraph},
-               {EX.WorkingGraph1, RDF.type(), DCATR.WorkingGraph},
-               {EX.WorkingGraph2, RDF.type(), DCATR.WorkingGraph},
+               {manifest_bn, RDF.type(), DCATR.ServiceManifestGraph},
+               {working1_bn, RDF.type(), DCATR.WorkingGraph},
+               {working2_bn, RDF.type(), DCATR.WorkingGraph},
                {EX.LocalSystemGraph, RDF.type(), DCATR.SystemGraph},
                {EX.ServiceData1, RDF.type(), DCATR.ServiceData},
-               {EX.ServiceData1, DCATR.serviceManifestGraph(), EX.ServiceManifest},
-               {EX.ServiceData1, DCATR.serviceWorkingGraph(),
-                [EX.WorkingGraph1, EX.WorkingGraph2]},
+               {EX.ServiceData1, DCATR.serviceManifestGraph(), manifest_bn},
+               {EX.ServiceData1, DCATR.serviceWorkingGraph(), [working1_bn, working2_bn]},
                {EX.ServiceData1, DCATR.serviceSystemGraph(), EX.LocalSystemGraph}
              ])
              |> ServiceData.load(EX.ServiceData1, depth: 99) == {:ok, example_service_data()}
@@ -116,9 +119,9 @@ defmodule DCATR.ServiceDataTest do
       local_system_graphs: [system1]
     } do
       assert ServiceData.graph(service_data, manifest.__id__) == manifest
-      assert ServiceData.graph(service_data, EX.ServiceManifest) == manifest
+      assert ServiceData.graph(service_data, RDF.bnode("ServiceManifest")) == manifest
       assert ServiceData.graph(service_data, working1.__id__) == working1
-      assert ServiceData.graph(service_data, EX.WorkingGraph2) == working2
+      assert ServiceData.graph(service_data, RDF.bnode(:WorkingGraph2)) == working2
       assert ServiceData.graph(service_data, EX.LocalSystemGraph) == system1
       assert ServiceData.graph(service_data, system1.__id__) == system1
     end
@@ -240,12 +243,13 @@ defmodule DCATR.ServiceDataTest do
 
     test "returns true for existing graphs by ID", %{
       service_data: service_data,
+      service_manifest: manifest,
       working_graphs: [working1 | _],
       local_system_graphs: [system1]
     } do
       assert ServiceData.has_graph?(service_data, working1.__id__)
       assert ServiceData.has_graph?(service_data, system1.__id__)
-      assert ServiceData.has_graph?(service_data, EX.ServiceManifest)
+      assert ServiceData.has_graph?(service_data, manifest.__id__)
     end
 
     test "returns true for manifest selector", %{service_data: service_data} do
