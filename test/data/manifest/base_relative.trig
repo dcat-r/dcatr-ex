@@ -1,0 +1,14 @@
+@prefix dcatr: <https://w3id.org/dcat-r#> .
+
+_:service-manifest {
+    <Service> a dcatr:Service
+        ; dcatr:serviceRepository <Repository>
+    .
+}
+
+_:repository-manifest {
+    <Repository> a dcatr:Repository
+        ; dcatr:repositoryDataset <Dataset>
+        ; dcatr:repositoryManifestGraph <RepositoryManifestGraph>
+    .
+}

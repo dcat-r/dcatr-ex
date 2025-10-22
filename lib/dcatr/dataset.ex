@@ -5,6 +5,8 @@ defmodule DCATR.Dataset do
   Each repository contains exactly one such dataset as its primary data container,
   modeled as a DCAT catalog of `DCATR.DataGraph`s.
 
+  Implements the `DCATR.Catalog` behaviour.
+
   ## Schema Mapping
 
   This schema does not directly inherit from `DCAT.Catalog` in Grax to avoid
@@ -30,15 +32,17 @@ defmodule DCATR.Dataset do
       entity = PROV.Entity.from(dataset)
   """
 
+  use DCATR.Catalog
   use Grax.Schema
 
   schema DCATR.Dataset do
-    link graphs: DCATR.dataGraph(), type: list_of(DCATR.DataGraph)
+    link graphs: DCATR.dataGraph(), type: list_of(DCATR.DataGraph), depth: +1
   end
 
   @doc """
   Returns a `DCATR.DataGraph` by id.
   """
+  @impl true
   @spec graph(t(), RDF.IRI.coercible()) :: DCATR.DataGraph.t() | nil
   def graph(%_dataset_type{graphs: graphs}, id) do
     graph_id = RDF.coerce_graph_name(id)
@@ -48,6 +52,12 @@ defmodule DCATR.Dataset do
   @doc """
   Returns all `DCATR.DataGraph`s in the dataset.
   """
-  @spec graphs(t()) :: [DCATR.DataGraph.t()]
-  def graphs(%_dataset_type{graphs: graphs}), do: graphs
+  @impl true
+  @spec graphs(t(), keyword()) :: [DCATR.DataGraph.t()]
+  def graphs(%_dataset_type{graphs: graphs}, _opts \\ []), do: graphs
+
+  @doc false
+  @impl true
+  @spec resolve_graph_selector(t(), DCATR.Catalog.selector()) :: nil
+  def resolve_graph_selector(_dataset, _selector), do: nil
 end

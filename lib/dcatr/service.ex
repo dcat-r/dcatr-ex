@@ -54,13 +54,18 @@ defmodule DCATR.Service do
       # => ~I<http://example.org/sparql>
   """
 
-  use Grax.Schema
+  use DCATR.Service.Type
 
   alias DCATR.{Repository, ServiceData}
 
   schema DCATR.Service do
-    link repository: DCATR.serviceRepository(), type: Repository, required: true
-    link local_data: DCATR.serviceLocalData(), type: ServiceData, required: true
+    link repository: DCATR.serviceRepository(),
+         type: Repository,
+         required: true,
+         on_missing_description: :use_rdf_node,
+         depth: 0
+
+    link local_data: DCATR.serviceLocalData(), type: ServiceData, required: true, depth: +1
 
     field :graph_names, default: %{}
     field :graph_names_by_id, default: %{}
@@ -69,163 +74,4 @@ defmodule DCATR.Service do
   @type graph_name :: :default | RDF.IRI.t() | RDF.BlankNode.t()
   @type graph_names :: %{graph_name() => RDF.IRI.t()}
   @type graph_names_by_id :: %{RDF.IRI.t() => graph_name()}
-  @type id_or_name_or_selector :: :manifest | graph_name() | RDF.IRI.coercible()
-  @type graph_type :: Repository.graph_type() | ServiceData.graph_type()
-
-  @doc """
-  Returns a graph by ID, selector, or local name.
-
-  Resolution order:
-
-  1. Try as selector (`:manifest`)
-  2. Try as graph name (from `graph_names` mapping)
-  3. Try as direct graph ID in repository/local_data
-
-  This is a convenience function - use specific functions for better performance.
-  """
-  @spec graph(t(), id_or_name_or_selector()) :: DCATR.Graph.t() | nil
-  def graph(service, id_or_name)
-
-  def graph(%_service_type{} = service, :manifest) do
-    if service.local_data, do: ServiceData.graph(service.local_data, :manifest)
-  end
-
-  def graph(%_service_type{} = service, id_or_name) do
-    graph_by_name(service, id_or_name) || graph_by_id(service, id_or_name)
-  end
-
-  @doc """
-  Returns a graph by its original ID.
-  """
-  @spec graph_by_id(t(), RDF.IRI.coercible()) :: DCATR.Graph.t() | nil
-  def graph_by_id(%_service_type_{repository: repository, local_data: local_data}, id) do
-    graph_id = RDF.coerce_graph_name(id)
-
-    Repository.graph(repository, graph_id) ||
-      (local_data && ServiceData.graph(local_data, graph_id))
-  end
-
-  @doc """
-  Returns a graph by its local name.
-  """
-  @spec graph_by_name(t(), graph_name()) :: DCATR.Graph.t() | nil
-  def graph_by_name(%_service_type{graph_names: names} = service, :default) do
-    if graph_id = Map.get(names, :default) do
-      graph_by_id(service, graph_id)
-    end
-  end
-
-  def graph_by_name(%_service_type{graph_names: names} = service, graph_name) do
-    if graph_id = Map.get(names, RDF.coerce_graph_name(graph_name)) do
-      graph_by_id(service, graph_id)
-    end
-  end
-
-  @doc """
-  Returns all graphs accessible through the service.
-  """
-  @spec graphs(t(), type: graph_type() | [graph_type()]) :: [DCATR.Graph.t()]
-  def graphs(%_service_type{} = service, opts \\ []) do
-    Repository.graphs(service.repository, opts) ++ ServiceData.graphs(service.local_data, opts)
-  end
-
-  @doc """
-  Checks if a graph exists in the service.
-  """
-  @spec has_graph?(t(), id_or_name_or_selector()) :: boolean()
-  def has_graph?(%_service_type{} = service, id_or_ref_or_local_name) do
-    graph(service, id_or_ref_or_local_name) != nil
-  end
-
-  @doc """
-  Returns the local name for a graph.
-  """
-  @spec graph_name(t(), :manifest | DCATR.Graph.t() | RDF.IRI.coercible()) :: graph_name() | nil
-  def graph_name(service, graph_or_id_or_ref)
-
-  def graph_name(%_service_type{} = service, :manifest) do
-    if manifest_graph = graph(service, :manifest) do
-      graph_name(service, manifest_graph)
-    end
-  end
-
-  def graph_name(%_service_type{} = service, %{__id__: id}), do: graph_name(service, id)
-
-  def graph_name(%_service_type{graph_names_by_id: names_by_id}, id) do
-    Map.get(names_by_id, RDF.coerce_graph_name(id))
-  end
-
-  @doc """
-  Returns the default graph if one is designated.
-  """
-  @spec default_graph(t()) :: DCATR.Graph.t() | nil
-  def default_graph(%_service_type{} = service) do
-    graph_by_name(service, :default)
-  end
-
-  @doc """
-  Returns the complete local name to graph mapping.
-  """
-  @spec graph_name_mapping(t()) :: graph_names()
-  def graph_name_mapping(%_service_type{graph_names: names}), do: names || %{}
-
-  @doc """
-  Adds a graph name mapping to the service.
-  """
-  @spec add_graph_name(t(), graph_name() | RDF.IRI.coercible(), RDF.IRI.coercible()) ::
-          {:ok, t()} | {:error, Exception.t()}
-  def add_graph_name(%_service_type{} = service, graph_name, graph_id) do
-    graph_id = RDF.iri(graph_id)
-    graph_name = if graph_name == :default, do: :default, else: RDF.coerce_graph_name(graph_name)
-
-    cond do
-      Map.has_key?(service.graph_names, graph_name) ->
-        {:error, %DCATR.DuplicateGraphNameError{name: graph_name}}
-
-      not has_graph?(service, graph_id) ->
-        {:error, %DCATR.GraphNotFoundError{graph_id: graph_id}}
-
-      true ->
-        {:ok,
-         %{
-           service
-           | graph_names: Map.put(service.graph_names, graph_name, graph_id),
-             graph_names_by_id: Map.put(service.graph_names_by_id, graph_id, graph_name)
-         }}
-    end
-  end
-
-  @impl Grax.Callbacks
-  def on_load(service, graph, _opts) do
-    with {:ok, service} <- extract_name_mappings(service, graph),
-         {:ok, service} <- extract_default_graph(service, graph) do
-      {:ok, service}
-    end
-  end
-
-  defp extract_name_mappings(service, graph) do
-    graph
-    |> RDF.Graph.query({:graph_id?, DCATR.localGraphName(), :graph_name?})
-    |> Enum.reduce_while({:ok, service}, fn
-      %{graph_id: graph_id, graph_name: graph_name}, {:ok, acc_service} ->
-        case add_graph_name(acc_service, graph_name, graph_id) do
-          {:ok, updated_service} -> {:cont, {:ok, updated_service}}
-          {:error, _} = error -> {:halt, error}
-        end
-    end)
-  end
-
-  defp extract_default_graph(service, graph) do
-    case RDF.Graph.query(graph, {:default_graph?, RDF.type(), DCATR.DefaultGraph}) do
-      [] ->
-        {:ok, service}
-
-      [%{default_graph: default_graph_id}] ->
-        add_graph_name(service, :default, default_graph_id)
-
-      multiple ->
-        graph_ids = Enum.map(multiple, fn %{default_graph: id} -> id end)
-        {:error, %DCATR.DuplicateGraphNameError{name: :default, graph_ids: graph_ids}}
-    end
-  end
 end

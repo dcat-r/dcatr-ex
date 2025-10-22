@@ -1,0 +1,6 @@
+@prefix dcatr: <https://w3id.org/dcat-r#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+<http://example.com/Repository> a dcatr:Repository ;
+    dcatr:repositoryDataset <http://example.com/Dataset> ;
+    dcatr:repositoryManifestGraph <http://example.com/RepositoryManifestGraph> .

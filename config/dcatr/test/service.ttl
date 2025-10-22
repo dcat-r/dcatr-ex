@@ -1,0 +1,10 @@
+@base <http://example.com/> .
+@prefix dcatr: <https://w3id.org/dcat-r#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+<Service> a dcatr:Service
+    ; dcatr:serviceRepository <Repository>
+    ; dcterms:title "test service"
+    ; dcterms:creator <User>
+    ; dcterms:publisher <User>
+.

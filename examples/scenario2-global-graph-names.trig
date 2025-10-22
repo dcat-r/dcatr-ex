@@ -1,0 +1,66 @@
+@prefix dcatr: <https://w3id.org/dcat-r#> .
+@prefix dcat:  <http://www.w3.org/ns/dcat#> .
+@prefix ex:    <http://example.org/> .
+
+# Scenario 2: Global Graph Names
+# ================================
+# This example demonstrates a dataset where all named graphs use their
+# global URIs directly without any local naming mappings.
+# This is the simplest case - graphs are accessed by their canonical URIs.
+
+################################################################################
+# MANIFEST GRAPHS (Configuration/Metadata)
+################################################################################
+
+# Service Manifest Graph (local configuration)
+_:service-manifest {
+    ex:myService a dcatr:Service ;
+        dcatr:serviceRepository ex:myRepository .
+
+    # No localGraphName statements - graphs are accessed by their global URIs
+}
+
+# Repository Manifest Graph
+_:repository-manifest {
+    ex:myRepository a dcatr:Repository ;
+        dcatr:repositoryDataset ex:myDataset ;
+        dcatr:repositoryManifestGraph ex:repository-manifest .
+
+    ex:repository-manifest a dcatr:RepositoryManifestGraph ;
+        dcat:title "Repository Metadata" .
+
+     # Dataset with globally named graphs (only DataGraphs)
+    ex:myDataset a dcatr:Dataset ;
+        dcatr:dataGraph ex:products-graph ,
+                        ex:customers-graph .
+
+    # Data graphs using their global URIs directly
+    ex:products-graph a dcatr:DataGraph ;
+        dcat:title "Product Catalog Graph" ;
+        dcat:description "Contains the complete product catalog with pricing and availability" .
+
+    ex:customers-graph a dcatr:DataGraph ;
+        dcat:title "Customer Data Graph" ;
+        dcat:description "Customer profiles and relationship data" .
+}
+
+################################################################################
+# USER DATA GRAPHS (Illustrative Examples)
+################################################################################
+
+# The actual data graphs (using global names)
+ex:products-graph {
+    # Product data would be here
+    # Example:
+    # ex:product-001 a ex:Product ;
+    #     ex:name "Widget" ;
+    #     ex:price 19.99 .
+}
+
+ex:customers-graph {
+    # Customer data would be here
+    # Example:
+    # ex:customer-001 a ex:Customer ;
+    #     ex:name "Alice" ;
+    #     ex:email "alice@example.org" .
+}

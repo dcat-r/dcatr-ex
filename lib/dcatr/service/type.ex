@@ -1,0 +1,505 @@
+defmodule DCATR.Service.Type do
+  @moduledoc """
+  Behaviour for service types that provide operations for repository access and processing.
+  """
+  alias DCATR.{Service, Repository, ServiceData}
+
+  @type t :: module()
+  @type schema :: Grax.Schema.t()
+  @type graph_type :: Repository.Type.graph_type() | ServiceData.Type.graph_type()
+  @type coercible_graph_name :: Service.graph_name() | RDF.IRI.coercible()
+
+  @doc """
+  Loads a service from a dataset.
+
+  This callback enables service initialization from RDF manifest data, supporting
+  environment-specific configuration and manifest-based bootstrapping.
+
+  Called by `DCATR.Manifest.Loader.load_manifest/2` during manifest loading to
+  construct the complete service hierarchy (Service → Repository → Dataset).
+
+  Override to customize service loading logic (e.g., loading additional linked resources,
+  applying environment-specific transformations).
+  """
+  @callback load_from_dataset(
+              dataset :: RDF.Dataset.t(),
+              service_id :: RDF.IRI.coercible(),
+              opts :: keyword()
+            ) :: {:ok, schema()} | {:error, any()}
+
+  @doc """
+  Returns the graph name for a given graph, selector, or ID.
+
+  This callback provides the critical graph-name translation API for triple-store access
+  (e.g., Gno), where operations require the local graph name under which a graph is stored.
+
+  Called by client code that needs to translate graph references into their local storage
+  names for triple-store operations, SPARQL queries, or graph management commands.
+
+  Override to customize graph name resolution (e.g., dynamic name generation, store-specific
+  naming conventions).
+
+  ## Options
+
+  - `:strict` - When `true` (default), verifies graph existence before returning the ID;
+    when `false`, returns the ID without existence check
+  """
+  @callback graph_name(
+              service :: schema(),
+              selector_or_graph_or_id :: atom() | DCATR.Graph.t() | RDF.IRI.coercible(),
+              opts :: keyword()
+            ) :: Service.graph_name() | nil
+
+  @doc """
+  Returns a graph by its local name.
+
+  This callback enables lookups via service-specific local names.
+
+  Override to customize name resolution logic.
+  """
+  @callback graph_by_name(service :: schema(), DCATR.Service.Type.coercible_graph_name()) ::
+              DCATR.Graph.t() | nil
+
+  @doc """
+  Returns the default graph if one is designated.
+
+  Override to customize default graph selection.
+  """
+  @callback default_graph(service :: schema()) :: DCATR.Graph.t() | nil
+
+  @doc """
+  Loads graph name mappings from a service manifest graph.
+
+  This callback extracts local graph name assignments from RDF manifest data, populating
+  the service's `graph_names` mapping.
+
+  Usually called by `c:load_from_dataset/3` after the service and repository are loaded.
+
+  Override to customize graph name extraction (e.g., additional naming schemes, validation).
+  """
+  @callback load_graph_names(service :: schema(), graph :: RDF.Graph.t()) ::
+              {:ok, schema()} | {:error, Exception.t()}
+
+  defmacro __using__(_) do
+    quote do
+      @behaviour DCATR.Service.Type
+      use DCATR.Catalog
+      use Grax.Schema
+
+      @doc """
+      Loads a service from a dataset.
+
+      This implementation of `c:DCATR.Service.Type.load_from_dataset/3` delegates to
+      `DCATR.Service.Type.load_from_dataset/4`.
+      """
+      @impl true
+      def load_from_dataset(dataset, service_id, opts \\ []) do
+        DCATR.Service.Type.load_from_dataset(__MODULE__, dataset, service_id, opts)
+      end
+
+      @doc """
+      Loads graph name mappings from a service manifest graph.
+
+      This implementation of `c:DCATR.Service.Type.load_graph_names/2` delegates to
+      `DCATR.Service.Type.load_graph_names/2`.
+      """
+      @impl true
+      def load_graph_names(service, graph) do
+        DCATR.Service.Type.load_graph_names(service, graph)
+      end
+
+      @doc """
+      Returns the graph name for a given graph, selector, or ID.
+
+      This implementation of `c:DCATR.Service.Type.graph_name/3` delegates to
+      `DCATR.Service.Type.graph_name/3`.
+      """
+      @impl true
+      def graph_name(service, selector_or_graph_or_id, opts \\ []) do
+        DCATR.Service.Type.graph_name(service, selector_or_graph_or_id, opts)
+      end
+
+      @doc """
+      Returns a graph by its local name.
+
+      This implementation of `c:DCATR.Service.Type.graph_by_name/2` delegates to
+      `DCATR.Service.Type.graph_by_name/2`.
+      """
+      @impl true
+      def graph_by_name(service, name) do
+        DCATR.Service.Type.graph_by_name(service, name)
+      end
+
+      @doc """
+      Returns a graph by its ID.
+
+      Delegates to `DCATR.Service.Type.graph_by_id/2`.
+      """
+      def graph_by_id(service, id) do
+        DCATR.Service.Type.graph_by_id(service, id)
+      end
+
+      @doc """
+      Resolves a symbolic selector to a graph.
+
+      This implementation of `c:DCATR.Catalog.resolve_graph_selector/2` delegates to
+      `DCATR.Service.Type.resolve_graph_selector/2`.
+      """
+      @impl DCATR.Catalog
+      def resolve_graph_selector(service, selector) do
+        DCATR.Service.Type.resolve_graph_selector(service, selector)
+      end
+
+      @doc """
+      Returns a graph by ID, local name, or symbolic selector.
+
+      This implementation of `c:DCATR.Catalog.graph/2` delegates to
+      `DCATR.Service.Type.graph/2`.
+      """
+      @impl DCATR.Catalog
+      def graph(service, selector_or_id) do
+        DCATR.Service.Type.graph(service, selector_or_id)
+      end
+
+      @doc """
+      Returns all graphs in the service.
+
+      This implementation of `c:DCATR.Catalog.graphs/2` delegates to
+      `DCATR.Service.Type.graphs/2`.
+      """
+      @impl DCATR.Catalog
+      def graphs(service, opts \\ []) do
+        DCATR.Service.Type.graphs(service, opts)
+      end
+
+      @doc """
+      Returns the default graph if one is designated.
+
+      This implementation of `c:DCATR.Service.Type.default_graph/1` delegates to
+      `DCATR.Service.Type.default_graph/1`.
+      """
+      @impl true
+      def default_graph(service) do
+        DCATR.Service.Type.default_graph(service)
+      end
+
+      @doc """
+      Returns the complete local name to graph ID mapping.
+
+      Delegates to `DCATR.Service.Type.graph_name_mapping/1`.
+      """
+      def graph_name_mapping(service) do
+        DCATR.Service.Type.graph_name_mapping(service)
+      end
+
+      @doc """
+      Returns the repository type module for this service type.
+      """
+      def repository_type do
+        unquote(__MODULE__).repository_type(__MODULE__)
+      end
+
+      @doc """
+      Returns the service data type module for this service type.
+      """
+      def service_data_type do
+        unquote(__MODULE__).service_data_type(__MODULE__)
+      end
+
+      defoverridable load_from_dataset: 2,
+                     load_from_dataset: 3,
+                     load_graph_names: 2,
+                     graph_name: 2,
+                     graph_name: 3,
+                     graph_by_name: 2,
+                     graph_by_id: 2,
+                     resolve_graph_selector: 2,
+                     default_graph: 1,
+                     graph_name_mapping: 1
+    end
+  end
+
+  # Public default implementations (called by __using__ delegation)
+
+  alias DCATR.{Manifest, Catalog}
+
+  import RDF.Guards
+
+  @doc """
+  Default implementation of `c:load_from_dataset/3`.
+
+  Loads service and repository from their manifest graphs in two stages from the 
+  different manifest graphs, then enriches the service with graph name mappings 
+  from the service manifest via `c:load_graph_names/2`.
+  """
+  @spec load_from_dataset(t(), RDF.Dataset.t(), RDF.IRI.coercible(), keyword()) ::
+          {:ok, schema()} | {:error, any()}
+  def load_from_dataset(service_type, dataset, service_id, opts \\ []) do
+    with {:ok, service_graph} <- Manifest.service_manifest_graph(dataset),
+         {:ok, repo_graph} <- Manifest.repository_manifest_graph(dataset),
+         {:ok, service} <-
+           service_type.load(service_graph, service_id, Keyword.put(opts, :depth, 99)),
+         {:ok, repo_id} <- extract_repository_id(service),
+         {:ok, repository} <- repository_type(service_type).load(repo_graph, repo_id, depth: 99),
+         {:ok, service} <-
+           %{service | repository: repository} |> service_type.load_graph_names(service_graph) do
+      {:ok, service}
+    end
+  end
+
+  defp extract_repository_id(%_{repository: %RDF.IRI{} = repo_iri}), do: {:ok, repo_iri}
+  defp extract_repository_id(%_{repository: %{__id__: repo_iri}}), do: {:ok, repo_iri}
+
+  @doc """
+  Default implementation of `c:load_graph_names/2`.
+
+  Extracts `dcatr:localGraphName` statements and `dcatr:DefaultGraph` type assertions
+  from the given graph, populating `graph_names` and `graph_names_by_id` maps of `DCATR.Service`.
+  """
+  @spec load_graph_names(schema(), RDF.Graph.t()) :: {:ok, schema()} | {:error, any()}
+  def load_graph_names(service, graph) do
+    with {:ok, service} <- extract_name_mappings(service, graph),
+         {:ok, service} <- extract_default_graph(service, graph) do
+      {:ok, service}
+    end
+  end
+
+  defp extract_name_mappings(service, graph) do
+    graph
+    |> RDF.Graph.query({:graph_id?, DCATR.localGraphName(), :graph_name?})
+    |> Enum.reduce_while({:ok, service}, fn
+      %{graph_id: graph_id, graph_name: graph_name}, {:ok, acc_service} ->
+        case add_graph_name(acc_service, graph_name, graph_id) do
+          {:ok, updated_service} -> {:cont, {:ok, updated_service}}
+          {:error, _} = error -> {:halt, error}
+        end
+    end)
+  end
+
+  defp extract_default_graph(service, graph) do
+    case RDF.Graph.query(graph, {:default_graph?, RDF.type(), DCATR.DefaultGraph}) do
+      [] ->
+        {:ok, service}
+
+      [%{default_graph: default_graph_id}] ->
+        add_graph_name(service, :default, default_graph_id)
+
+      multiple ->
+        graph_ids = Enum.map(multiple, fn %{default_graph: id} -> id end)
+        {:error, %DCATR.DuplicateGraphNameError{name: :default, graph_ids: graph_ids}}
+    end
+  end
+
+  @doc """
+  Adds a graph name mapping to the service.
+
+  Validates graph existence and ensures name uniqueness before updating both
+  `graph_names` (name→ID) and `graph_names_by_id` (ID→name) mappings of `DCATR.Service`.
+  """
+  @spec add_graph_name(schema(), coercible_graph_name(), coercible_graph_name()) ::
+          {:ok, schema()} | {:error, Exception.t()}
+  def add_graph_name(%service_type{} = service, graph_name, graph_id) do
+    graph_id = RDF.iri(graph_id)
+    graph_name = if graph_name == :default, do: :default, else: RDF.coerce_graph_name(graph_name)
+
+    cond do
+      Map.has_key?(service.graph_names, graph_name) ->
+        {:error, %DCATR.DuplicateGraphNameError{name: graph_name}}
+
+      not service_type.has_graph?(service, graph_id) ->
+        {:error, %DCATR.GraphNotFoundError{graph_id: graph_id}}
+
+      true ->
+        {:ok,
+         %{
+           service
+           | graph_names: Map.put(service.graph_names, graph_name, graph_id),
+             graph_names_by_id: Map.put(service.graph_names_by_id, graph_id, graph_name)
+         }}
+    end
+  end
+
+  @doc """
+  Default implementation of `c:graph_name/3`.
+
+  Resolves selectors via `graph/2` and looks up local name mappings in `graph_names_by_id`.
+  Returns `nil` if the graph does not exist (when `strict: true`).
+
+  ## Options
+
+  - `:strict` - When `true` (default), checks graph existence before returning
+    the ID as a fallback. When `false`, returns the provided graph ID directly
+    without existence check.
+  """
+  @spec graph_name(
+          schema(),
+          Catalog.selector() | DCATR.Graph.t() | RDF.IRI.coercible(),
+          keyword()
+        ) ::
+          Service.graph_name() | nil
+  def graph_name(service, selector_or_graph_or_id, opts \\ [])
+
+  def graph_name(%service_type{} = service, %{__id__: id}, opts),
+    do: service_type.graph_name(service, id, opts)
+
+  def graph_name(%service_type{graph_names_by_id: names_by_id} = service, graph_id, opts)
+      when is_rdf_resource(graph_id) do
+    names_by_id[graph_id] ||
+      if Keyword.get(opts, :strict, true) do
+        if service_type.has_graph?(service, graph_id), do: graph_id
+      else
+        graph_id
+      end
+  end
+
+  def graph_name(%service_type{} = service, ns_term_or_selector, opts) do
+    cond do
+      graph = service_type.resolve_graph_selector(service, ns_term_or_selector) ->
+        service_type.graph_name(service, graph.__id__, opts)
+
+      graph_id = RDF.coerce_graph_name(ns_term_or_selector) ->
+        service_type.graph_name(service, graph_id, opts)
+
+      true ->
+        nil
+    end
+  end
+
+  @doc """
+  Default implementation of `c:DCATR.Catalog.resolve_graph_selector/2`.
+
+  Delegates selector resolution to Repository and ServiceData catalogs.
+  """
+  @spec resolve_graph_selector(schema(), Catalog.selector()) :: DCATR.Graph.t() | nil
+  def resolve_graph_selector(
+        %{
+          repository: %repository_type{} = repository,
+          local_data: %service_data_type{} = local_data
+        },
+        selector
+      ) do
+    repository_type.resolve_graph_selector(repository, selector) ||
+      service_data_type.resolve_graph_selector(local_data, selector)
+  end
+
+  @doc """
+  Default implementation of `c:DCATR.Catalog.graph/2`.
+
+  Tries selector resolution, then local name lookup, then ID lookup across Repository
+  and ServiceData catalogs.
+  """
+  @spec graph(schema(), Catalog.id_or_selector()) :: DCATR.Graph.t() | nil
+  def graph(%service_type{} = service, name_or_selector_or_id) do
+    service_type.resolve_graph_selector(service, name_or_selector_or_id) ||
+      service_type.graph_by_name(service, name_or_selector_or_id) ||
+      service_type.graph_by_id(service, name_or_selector_or_id)
+  end
+
+  @doc """
+  Default implementation of `c:graph_by_name/2`.
+
+  Looks up the graph ID in `graph_names` mapping, then delegates to `graph_by_id/2`.
+  """
+  @spec graph_by_name(schema(), coercible_graph_name()) :: DCATR.Graph.t() | nil
+  def graph_by_name(%{graph_names: names} = service, :default) do
+    if graph_id = Map.get(names, :default) do
+      graph_by_id(service, graph_id)
+    end
+  end
+
+  def graph_by_name(%{graph_names: names} = service, graph_name) do
+    if graph_id = Map.get(names, RDF.coerce_graph_name(graph_name)) do
+      graph_by_id(service, graph_id)
+    end
+  end
+
+  @doc """
+  Default implementation of `graph_by_id/2`.
+
+  Searches in Repository and ServiceData catalogs.
+  """
+  @spec graph_by_id(schema(), RDF.IRI.coercible()) :: DCATR.Graph.t() | nil
+  def graph_by_id(
+        %{
+          repository: %repository_type{} = repository,
+          local_data: %service_data_type{} = local_data
+        },
+        id
+      ) do
+    graph_id = RDF.coerce_graph_name(id)
+
+    repository_type.graph(repository, graph_id) ||
+      service_data_type.graph(local_data, graph_id)
+  end
+
+  @doc """
+  Default implementation of `c:DCATR.Catalog.graphs/2`.
+
+  Aggregates graphs from Repository and ServiceData catalogs, applying type filters when
+  specified.
+  """
+  @spec graphs(schema(), type: graph_type() | [graph_type()]) :: [DCATR.Graph.t()]
+  def graphs(
+        %{
+          repository: %repository_type{} = repository,
+          local_data: %service_data_type{} = local_data
+        },
+        opts \\ []
+      ) do
+    repository_type.graphs(repository, opts) ++ service_data_type.graphs(local_data, opts)
+  end
+
+  @doc """
+  Default implementation of `c:default_graph/1`.
+
+  Returns the graph mapped to the `:default` local name via `c:graph_by_name/2`.
+  """
+  @spec default_graph(schema()) :: DCATR.Graph.t() | nil
+  def default_graph(%service_type{} = service) do
+    service_type.graph_by_name(service, :default)
+  end
+
+  @doc """
+  Default implementation for `graph_name_mapping/1`.
+
+  Returns the `graph_names` map from the `DCATR.Service` struct.
+  """
+  @spec graph_name_mapping(schema()) :: Service.graph_names()
+  def graph_name_mapping(%{graph_names: names}), do: names || %{}
+
+  @doc """
+  Returns the repository type module for a given service type.
+
+  Extracts the `DCATR.Repository.Type` from the service's `:repository` property schema definition.
+
+  ## Examples
+
+      iex> DCATR.Service.Type.repository_type(DCATR.Service)
+      DCATR.Repository
+  """
+  @spec repository_type(module()) :: module()
+  def repository_type(service_type) do
+    case service_type.__property__(:repository) do
+      %Grax.Schema.LinkProperty{type: {:resource, repository_type_type}} -> repository_type_type
+      invalid -> raise "Invalid repository type on service #{service_type}: #{inspect(invalid)}"
+    end
+  end
+
+  @doc """
+  Returns the service data type module for a given service type.
+
+  Extracts the `DCATR.ServiceData.Type` from the service's `:local_data` property schema definition.
+
+  ## Examples
+
+      iex> DCATR.Service.Type.service_data_type(DCATR.Service)
+      DCATR.ServiceData
+  """
+  @spec service_data_type(module()) :: module()
+  def service_data_type(service_type) do
+    case service_type.__property__(:local_data) do
+      %Grax.Schema.LinkProperty{type: {:resource, service_data_type}} -> service_data_type
+      invalid -> raise "Invalid service data type on service #{service_type}: #{inspect(invalid)}"
+    end
+  end
+end

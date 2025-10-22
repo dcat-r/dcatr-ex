@@ -1,0 +1,94 @@
+@prefix dcatr: <https://w3id.org/dcat-r#> .
+@prefix dcat:  <http://www.w3.org/ns/dcat#> .
+@prefix ex:    <http://example.org/> .
+@prefix local: <http://localhost/graphs/> .
+
+# Scenario 3: Local Graph Names with Default Graph
+# ==================================================
+# This example demonstrates a dataset where:
+# - Named graphs have local service-specific names that differ from their global URIs
+# - One user data graph is designated as the default graph
+# The service uses simplified, semantic names internally while
+# preserving the canonical URIs in the repository metadata.
+
+################################################################################
+# MANIFEST GRAPHS (Configuration/Metadata)
+################################################################################
+
+# Service Manifest Graph (with local naming configuration)
+_:service-manifest {
+    ex:service-manifest a dcatr:ServiceManifestGraph ;
+        dcat:title "Service Configuration" .
+
+    ex:service-data a dcatr:ServiceData ;
+        dcatr:serviceManifestGraph ex:service-manifest .
+
+    ex:myService a dcatr:Service ;
+        dcatr:serviceRepository ex:myRepository ;
+        dcatr:serviceLocalData ex:service-data .
+
+    # Local naming mappings (belong to service configuration)
+    # These statements map global graph URIs to local names
+    ex:catalog-2024-09 dcatr:localGraphName local:products .
+    ex:users-2024-09 dcatr:localGraphName local:customers .
+
+    # Default graph designation (service-local configuration)
+    # The product catalog is designated as the default graph for this service
+    ex:catalog-2024-09 a dcatr:DefaultGraph .
+}
+
+# Repository Manifest Graph
+_:repository-manifest {
+    ex:repository-manifest a dcatr:RepositoryManifestGraph ;
+        dcat:title "Repository Metadata" .
+
+    ex:myRepository a dcatr:Repository ;
+        dcatr:repositoryDataset ex:myDataset ;
+        dcatr:repositoryManifestGraph ex:repository-manifest .
+
+    # Dataset with timestamped graph URIs (canonical names)
+    ex:myDataset a dcatr:Dataset ;
+        dcatr:dataGraph ex:catalog-2024-09 ,
+                        ex:users-2024-09 .
+
+    ex:catalog-2024-09 a dcatr:DataGraph ;
+        dcat:title "September 2024 Product Catalog" ;
+        dcat:description "Product catalog snapshot from September 2024" ;
+        dcat:issued "2024-09-01"^^<http://www.w3.org/2001/XMLSchema#date> .
+
+    ex:users-2024-09 a dcatr:DataGraph ;
+        dcat:title "September 2024 User Data" ;
+        dcat:description "Active user profiles as of September 2024" ;
+        dcat:issued "2024-09-01"^^<http://www.w3.org/2001/XMLSchema#date> .
+}
+
+################################################################################
+# USER DATA GRAPHS (Illustrative Examples)
+################################################################################
+# These graphs contain example data to illustrate what the manifests describe.
+# In the service, these are accessed via local:products and local:customers
+# but their canonical URIs are ex:catalog-2024-09 and ex:users-2024-09
+
+local:products {
+    # Product catalog data
+    # This graph is actually ex:catalog-2024-09
+    # but accessed locally as local:products
+    #
+    # Example:
+    # ex:product-001 a ex:Product ;
+    #     ex:name "Advanced Widget" ;
+    #     ex:price 29.99 ;
+    #     ex:inStock true .
+}
+
+local:customers {
+    # Customer data
+    # This graph is actually ex:users-2024-09
+    # but accessed locally as local:customers
+    #
+    # Example:
+    # ex:customer-001 a ex:Customer ;
+    #     ex:name "Bob Smith" ;
+    #     ex:email "bob@example.org" ;
+    #     ex:registrationDate "2024-09-15"^^<http://www.w3.org/2001/XMLSchema#date> .
+}

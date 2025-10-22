@@ -103,8 +103,12 @@ defmodule DCATR.RepositoryTest do
   describe "graph/2" do
     setup :example_repository_scenario
 
-    test "returns manifest graph with :manifest selector", %{repo: repo, repo_manifest: manifest} do
-      assert Repository.graph(repo, :manifest) == manifest
+    test "returns manifest graph with :repository_manifest and :repo_manifest selector", %{
+      repo: repo,
+      repo_manifest: manifest
+    } do
+      assert Repository.graph(repo, :repository_manifest) == manifest
+      assert Repository.graph(repo, :repo_manifest) == manifest
     end
 
     test "returns system graph by ID", %{
@@ -131,6 +135,14 @@ defmodule DCATR.RepositoryTest do
     test "returns nil for non-existent graph", %{repo: repo} do
       assert Repository.graph(repo, EX.NonExistent) == nil
     end
+  end
+
+  test "resolve_graph_selector/2" do
+    repo = example_repository()
+
+    assert Repository.resolve_graph_selector(repo, :repository_manifest) == repo.manifest_graph
+    assert Repository.resolve_graph_selector(repo, :repo_manifest) == repo.manifest_graph
+    assert Repository.resolve_graph_selector(repo, :unknown_selector) == nil
   end
 
   describe "graphs/2" do
@@ -228,7 +240,8 @@ defmodule DCATR.RepositoryTest do
     end
 
     test "returns true for existing graphs by selector", %{repo: repo} do
-      assert Repository.has_graph?(repo, :manifest) == true
+      assert Repository.has_graph?(repo, :repository_manifest) == true
+      assert Repository.has_graph?(repo, :repo_manifest) == true
     end
 
     test "returns false for non-existent graphs", %{repo: repo} do

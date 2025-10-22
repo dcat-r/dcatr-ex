@@ -49,8 +49,9 @@ defmodule DCATR.ServiceTest do
                 )}
     end
 
-    @tag skip: "TODO: fix service graph metadata leak into graph schemas"
-    test "service with all properties" do
+    @tag skip:
+           "TODO: fix service graph metadata leak into graph schemas; for now load_from_dataset/3 should be used instead"
+    test "service with all properties; not preloading repository" do
       assert RDF.graph([
                {EX.DataGraph1, RDF.type(), DCATR.DataGraph},
                {EX.DataGraph2, RDF.type(), DCATR.DataGraph},
@@ -64,24 +65,306 @@ defmodule DCATR.ServiceTest do
                {EX.Repository1, DCATR.repositoryManifestGraph(), EX.RepositoryManifest},
                {EX.Repository1, DCATR.repositorySystemGraph(),
                 [EX.SystemGraph1, EX.SystemGraph2]},
-               {EX.ServiceManifest, RDF.type(), DCATR.ServiceManifestGraph},
-               {EX.WorkingGraph1, RDF.type(), DCATR.WorkingGraph},
-               {EX.WorkingGraph2, RDF.type(), DCATR.WorkingGraph},
+               {~B<ServiceManifest>, RDF.type(), DCATR.ServiceManifestGraph},
+               {~B<WorkingGraph1>, RDF.type(), DCATR.WorkingGraph},
+               {~B<WorkingGraph2>, RDF.type(), DCATR.WorkingGraph},
                {EX.LocalSystemGraph, RDF.type(), DCATR.SystemGraph},
                {EX.ServiceData1, RDF.type(), DCATR.ServiceData},
-               {EX.ServiceData1, DCATR.serviceManifestGraph(), EX.ServiceManifest},
+               {EX.ServiceData1, DCATR.serviceManifestGraph(), ~B<ServiceManifest>},
                {EX.ServiceData1, DCATR.serviceWorkingGraph(),
-                [EX.WorkingGraph1, EX.WorkingGraph2]},
+                [~B<WorkingGraph1>, ~B<WorkingGraph2>]},
                {EX.ServiceData1, DCATR.serviceSystemGraph(), EX.LocalSystemGraph},
                {EX.Service1, RDF.type(), DCATR.Service},
                {EX.Service1, DCATR.serviceRepository(), EX.Repository1},
                {EX.Service1, DCATR.serviceLocalData(), EX.ServiceData1},
-               {EX.WorkingGraph1, DCATR.localGraphName(), EX.WorkingGraph1Name},
-               {EX.ServiceManifest, DCATR.localGraphName(), ~B<ServiceManifest>},
+               {~B<WorkingGraph1>, DCATR.localGraphName(), EX.WorkingGraph1Name},
+               {~B<ServiceManifest>, DCATR.localGraphName(), ~B<ServiceManifest>},
                {EX.DataGraph2, DCATR.localGraphName(), RDF.bnode(:graph2)},
                {EX.DataGraph1, RDF.type(), DCATR.DefaultGraph}
              ])
-             |> Service.load(EX.Service1, depth: 99) == {:ok, example_service()}
+             |> Service.load(EX.Service1) ==
+               {:ok,
+                %{
+                  example_service()
+                  | graph_names: %{},
+                    graph_names_by_id: %{},
+                    repository: RDF.iri(EX.Repository1)
+                }}
+    end
+  end
+
+  describe "load_from_dataset/3" do
+    test "loads service and repository from separate graphs" do
+      service_graph =
+        RDF.graph([
+          {EX.Service1, RDF.type(), DCATR.Service},
+          {EX.Service1, DCATR.serviceRepository(), EX.Repository1},
+          {EX.Service1, DCATR.serviceLocalData(), EX.ServiceData1},
+          {EX.ServiceData1, DCATR.serviceManifestGraph(), ~B<ServiceManifest>}
+        ])
+
+      repo_graph =
+        RDF.graph([
+          {EX.Repository1, RDF.type(), DCATR.Repository},
+          {EX.Repository1, DCATR.repositoryDataset(), EX.Dataset1},
+          {EX.Repository1, DCATR.repositoryManifestGraph(), EX.RepositoryManifest},
+          {EX.Dataset1, RDF.type(), DCATR.Dataset}
+        ])
+
+      dataset =
+        RDF.Dataset.new()
+        |> RDF.Dataset.add(service_graph,
+          graph: DCATR.Manifest.Loader.service_manifest_graph_name()
+        )
+        |> RDF.Dataset.add(repo_graph,
+          graph: DCATR.Manifest.Loader.repository_manifest_graph_name()
+        )
+
+      assert {:ok, service} = Service.load_from_dataset(dataset, EX.Service1)
+
+      assert service.__id__ == RDF.iri(EX.Service1)
+      assert %DCATR.Repository{} = service.repository
+      assert service.repository.__id__ == RDF.iri(EX.Repository1)
+      assert service.repository.dataset.__id__ == RDF.iri(EX.Dataset1)
+    end
+
+    test "loads service with local graph name mappings" do
+      service_graph =
+        RDF.graph([
+          {EX.Service1, RDF.type(), DCATR.Service},
+          {EX.Service1, DCATR.serviceRepository(), EX.Repository1},
+          {EX.Service1, DCATR.serviceLocalData(), EX.ServiceData1},
+          {EX.ServiceData1, DCATR.serviceManifestGraph(), ~B<ServiceManifest>},
+          # Local graph name mappings in ServiceManifestGraph
+          {EX.DataGraph1, DCATR.localGraphName(), EX.LocalName1}
+        ])
+
+      repo_graph =
+        RDF.graph([
+          {EX.Repository1, RDF.type(), DCATR.Repository},
+          {EX.Repository1, DCATR.repositoryDataset(), EX.Dataset1},
+          {EX.Repository1, DCATR.repositoryManifestGraph(), EX.RepositoryManifest},
+          {EX.Dataset1, RDF.type(), DCATR.Dataset},
+          {EX.Dataset1, DCATR.dataGraph(), EX.DataGraph1},
+          {EX.DataGraph1, RDF.type(), DCATR.DataGraph}
+        ])
+
+      dataset =
+        RDF.Dataset.new()
+        |> RDF.Dataset.add(service_graph,
+          graph: DCATR.Manifest.Loader.service_manifest_graph_name()
+        )
+        |> RDF.Dataset.add(repo_graph,
+          graph: DCATR.Manifest.Loader.repository_manifest_graph_name()
+        )
+
+      assert {:ok, service} = Service.load_from_dataset(dataset, EX.Service1)
+
+      assert service.graph_names[RDF.iri(EX.LocalName1)] == RDF.iri(EX.DataGraph1)
+      assert service.graph_names_by_id[RDF.iri(EX.DataGraph1)] == RDF.iri(EX.LocalName1)
+
+      assert %DCATR.DataGraph{} = graph = Service.graph_by_name(service, EX.LocalName1)
+      assert graph.__id__ == RDF.iri(EX.DataGraph1)
+    end
+
+    test "loads service with default graph designation" do
+      service_graph =
+        RDF.graph([
+          {EX.Service1, RDF.type(), DCATR.Service},
+          {EX.Service1, DCATR.serviceRepository(), EX.Repository1},
+          {EX.Service1, DCATR.serviceLocalData(), EX.ServiceData1},
+          {EX.ServiceData1, DCATR.serviceManifestGraph(), ~B<ServiceManifest>},
+          # Default graph designation in ServiceManifestGraph
+          {EX.DataGraph1, RDF.type(), DCATR.DefaultGraph}
+        ])
+
+      repo_graph =
+        RDF.graph([
+          {EX.Repository1, RDF.type(), DCATR.Repository},
+          {EX.Repository1, DCATR.repositoryDataset(), EX.Dataset1},
+          {EX.Repository1, DCATR.repositoryManifestGraph(), EX.RepositoryManifest},
+          {EX.Dataset1, RDF.type(), DCATR.Dataset},
+          {EX.Dataset1, DCATR.dataGraph(), EX.DataGraph1},
+          {EX.DataGraph1, RDF.type(), DCATR.DataGraph}
+        ])
+
+      dataset =
+        RDF.Dataset.new()
+        |> RDF.Dataset.add(service_graph,
+          graph: DCATR.Manifest.Loader.service_manifest_graph_name()
+        )
+        |> RDF.Dataset.add(repo_graph,
+          graph: DCATR.Manifest.Loader.repository_manifest_graph_name()
+        )
+
+      assert {:ok, service} = Service.load_from_dataset(dataset, EX.Service1)
+
+      assert service.graph_names[:default] == RDF.iri(EX.DataGraph1)
+      assert service.graph_names_by_id[RDF.iri(EX.DataGraph1)] == :default
+
+      assert %DCATR.DataGraph{} = graph = Service.default_graph(service)
+      assert graph.__id__ == RDF.iri(EX.DataGraph1)
+    end
+
+    test "returns error when graph name references non-existent graph" do
+      service_graph =
+        RDF.graph([
+          {EX.Service1, RDF.type(), DCATR.Service},
+          {EX.Service1, DCATR.serviceRepository(), EX.Repository1},
+          {EX.Service1, DCATR.serviceLocalData(), EX.ServiceData1},
+          {EX.ServiceData1, DCATR.serviceManifestGraph(), ~B<ServiceManifest>},
+          # Reference to non-existent graph
+          {EX.NonExistentGraph, DCATR.localGraphName(), EX.LocalName1}
+        ])
+
+      repo_graph =
+        RDF.graph([
+          {EX.Repository1, RDF.type(), DCATR.Repository},
+          {EX.Repository1, DCATR.repositoryDataset(), EX.Dataset1},
+          {EX.Repository1, DCATR.repositoryManifestGraph(), EX.RepositoryManifest},
+          {EX.Dataset1, RDF.type(), DCATR.Dataset}
+        ])
+
+      dataset =
+        RDF.Dataset.new()
+        |> RDF.Dataset.add(service_graph,
+          graph: DCATR.Manifest.Loader.service_manifest_graph_name()
+        )
+        |> RDF.Dataset.add(repo_graph,
+          graph: DCATR.Manifest.Loader.repository_manifest_graph_name()
+        )
+
+      assert Service.load_from_dataset(dataset, EX.Service1) ==
+               {:error, %DCATR.GraphNotFoundError{graph_id: RDF.iri(EX.NonExistentGraph)}}
+    end
+
+    test "returns error when multiple default graphs are designated" do
+      service_graph =
+        RDF.graph([
+          {EX.Service1, RDF.type(), DCATR.Service},
+          {EX.Service1, DCATR.serviceRepository(), EX.Repository1},
+          {EX.Service1, DCATR.serviceLocalData(), EX.ServiceData1},
+          {EX.ServiceData1, DCATR.serviceManifestGraph(), ~B<ServiceManifest>},
+          # Multiple default graphs
+          {EX.DataGraph1, RDF.type(), DCATR.DefaultGraph},
+          {EX.DataGraph2, RDF.type(), DCATR.DefaultGraph}
+        ])
+
+      repo_graph =
+        RDF.graph([
+          {EX.Repository1, RDF.type(), DCATR.Repository},
+          {EX.Repository1, DCATR.repositoryDataset(), EX.Dataset1},
+          {EX.Repository1, DCATR.repositoryManifestGraph(), EX.RepositoryManifest},
+          {EX.Dataset1, RDF.type(), DCATR.Dataset},
+          {EX.Dataset1, DCATR.dataGraph(), EX.DataGraph1},
+          {EX.Dataset1, DCATR.dataGraph(), EX.DataGraph2},
+          {EX.DataGraph1, RDF.type(), DCATR.DataGraph},
+          {EX.DataGraph2, RDF.type(), DCATR.DataGraph}
+        ])
+
+      dataset =
+        RDF.Dataset.new()
+        |> RDF.Dataset.add(service_graph,
+          graph: DCATR.Manifest.Loader.service_manifest_graph_name()
+        )
+        |> RDF.Dataset.add(repo_graph,
+          graph: DCATR.Manifest.Loader.repository_manifest_graph_name()
+        )
+
+      assert {:error, %DCATR.DuplicateGraphNameError{name: :default}} =
+               Service.load_from_dataset(dataset, EX.Service1)
+    end
+
+    test "returns error when service manifest graph is missing" do
+      repo_graph =
+        RDF.graph([
+          {EX.Repository1, RDF.type(), DCATR.Repository},
+          {EX.Repository1, DCATR.repositoryDataset(), EX.Dataset1},
+          {EX.Repository1, DCATR.repositoryManifestGraph(), EX.RepositoryManifest},
+          {EX.Dataset1, RDF.type(), DCATR.Dataset}
+        ])
+
+      dataset =
+        RDF.Dataset.new()
+        |> RDF.Dataset.add(repo_graph,
+          graph: DCATR.Manifest.Loader.repository_manifest_graph_name()
+        )
+
+      assert {:error, %DCATR.ManifestError{reason: :no_service_graph}} =
+               Service.load_from_dataset(dataset, EX.Service1)
+    end
+
+    test "returns error when repository manifest graph is missing" do
+      service_graph =
+        RDF.graph([
+          {EX.Service1, RDF.type(), DCATR.Service},
+          {EX.Service1, DCATR.serviceRepository(), EX.Repository1},
+          {EX.Service1, DCATR.serviceLocalData(), EX.ServiceData1},
+          {EX.ServiceData1, DCATR.serviceManifestGraph(), ~B<ServiceManifest>}
+        ])
+
+      dataset =
+        RDF.Dataset.new()
+        |> RDF.Dataset.add(service_graph,
+          graph: DCATR.Manifest.Loader.service_manifest_graph_name()
+        )
+
+      assert {:error, %DCATR.ManifestError{reason: :no_repository_graph}} =
+               Service.load_from_dataset(dataset, EX.Service1)
+    end
+
+    test "returns error when both manifest graphs are missing" do
+      dataset = RDF.Dataset.new()
+
+      assert {:error, %DCATR.ManifestError{reason: :no_service_graph}} =
+               Service.load_from_dataset(dataset, EX.Service1)
+    end
+
+    test "loads service with local graph names from separate graphs" do
+      service_graph =
+        RDF.graph([
+          {EX.Service1, RDF.type(), DCATR.Service},
+          {EX.Service1, DCATR.serviceRepository(), EX.Repository1},
+          {EX.Service1, DCATR.serviceLocalData(), EX.ServiceData1},
+          {EX.ServiceData1, DCATR.serviceManifestGraph(), ~B<ServiceManifest>},
+          # Local graph name mappings in ServiceManifestGraph
+          {EX.DataGraph1, DCATR.localGraphName(), EX.LocalName1},
+          {EX.DataGraph2, RDF.type(), DCATR.DefaultGraph}
+        ])
+
+      repo_graph =
+        RDF.graph([
+          {EX.Repository1, RDF.type(), DCATR.Repository},
+          {EX.Repository1, DCATR.repositoryDataset(), EX.Dataset1},
+          {EX.Repository1, DCATR.repositoryManifestGraph(), EX.RepositoryManifest},
+          {EX.Dataset1, RDF.type(), DCATR.Dataset},
+          {EX.Dataset1, DCATR.dataGraph(), EX.DataGraph1},
+          {EX.Dataset1, DCATR.dataGraph(), EX.DataGraph2},
+          {EX.DataGraph1, RDF.type(), DCATR.DataGraph},
+          {EX.DataGraph2, RDF.type(), DCATR.DataGraph}
+        ])
+
+      dataset =
+        RDF.Dataset.new()
+        |> RDF.Dataset.add(service_graph,
+          graph: DCATR.Manifest.Loader.service_manifest_graph_name()
+        )
+        |> RDF.Dataset.add(repo_graph,
+          graph: DCATR.Manifest.Loader.repository_manifest_graph_name()
+        )
+
+      assert {:ok, service} = Service.load_from_dataset(dataset, EX.Service1)
+
+      assert service.graph_names[RDF.iri(EX.LocalName1)] == RDF.iri(EX.DataGraph1)
+      assert service.graph_names[:default] == RDF.iri(EX.DataGraph2)
+      assert service.graph_names_by_id[RDF.iri(EX.DataGraph1)] == RDF.iri(EX.LocalName1)
+      assert service.graph_names_by_id[RDF.iri(EX.DataGraph2)] == :default
+
+      assert %DCATR.DataGraph{__id__: graph1_id} = Service.graph_by_name(service, EX.LocalName1)
+      assert graph1_id == RDF.iri(EX.DataGraph1)
+
+      assert %DCATR.DataGraph{__id__: graph2_id} = Service.default_graph(service)
+      assert graph2_id == RDF.iri(EX.DataGraph2)
     end
   end
 
@@ -119,8 +402,14 @@ defmodule DCATR.ServiceTest do
       assert Service.graph(service, RDF.bnode(:graph2)) == graph2
     end
 
-    test "finds graph by selector :manifest", %{service: service, service_manifest: manifest} do
-      assert Service.graph(service, :manifest) == manifest
+    test "finds graph by manifest selectors", %{
+      service: service,
+      service_manifest: service_manifest,
+      repo_manifest: repo_manifest
+    } do
+      assert Service.graph(service, :service_manifest) == service_manifest
+      assert Service.graph(service, :repository_manifest) == repo_manifest
+      assert Service.graph(service, :repo_manifest) == repo_manifest
     end
 
     test "finds graph by direct ID", %{
@@ -139,6 +428,21 @@ defmodule DCATR.ServiceTest do
     test "returns nil for non-existent graph", %{service: service} do
       assert Service.graph(service, EX.NonExistent) == nil
     end
+  end
+
+  test "resolve_graph_selector/2" do
+    service = example_service()
+
+    assert Service.resolve_graph_selector(service, :service_manifest) ==
+             service.local_data.manifest_graph
+
+    assert Service.resolve_graph_selector(service, :repository_manifest) ==
+             service.repository.manifest_graph
+
+    assert Service.resolve_graph_selector(service, :repo_manifest) ==
+             service.repository.manifest_graph
+
+    assert Service.resolve_graph_selector(service, :unknown_selector) == nil
   end
 
   describe "graph_by_id/2" do
@@ -234,14 +538,66 @@ defmodule DCATR.ServiceTest do
                RDF.iri(EX.WorkingGraph1Name)
     end
 
-    test "returns graph name for :manifest selector when manifest has local name", %{
+    test "returns graph name for manifest selectors", %{
       service: service
     } do
-      assert Service.graph_name(service, :manifest) == ~B<ServiceManifest>
+      # Service manifest has a local name
+      assert Service.graph_name(service, :service_manifest) == ~B<ServiceManifest>
+      # Repository manifest has no local name, falls back to graph ID
+      assert Service.graph_name(service, :repository_manifest) == RDF.iri(EX.RepositoryManifest)
+      assert Service.graph_name(service, :repo_manifest) == RDF.iri(EX.RepositoryManifest)
     end
 
-    test "returns nil for graph without graph name", %{service: service} do
-      assert Service.graph_name(service, EX.RepositoryManifest) == nil
+    test "returns graph ID for graphs without local name mapping", %{service: service} do
+      assert Service.graph_name(service, EX.RepositoryManifest) == RDF.iri(EX.RepositoryManifest)
+      assert Service.graph_name(service, EX.SystemGraph1) == RDF.iri(EX.SystemGraph1)
+    end
+
+    test "returns nil for non-existent graph ID (default strict: true)", %{service: service} do
+      assert Service.graph_name(service, EX.NonExistentGraph) == nil
+    end
+  end
+
+  describe "graph_name/3 with :strict option" do
+    setup :example_service_scenario
+
+    test "strict: true returns nil for non-existent graph ID", %{service: service} do
+      assert Service.graph_name(service, EX.NonExistentGraph, strict: true) == nil
+    end
+
+    test "strict: true returns graph ID for existing graphs", %{service: service} do
+      assert Service.graph_name(service, EX.RepositoryManifest, strict: true) ==
+               RDF.iri(EX.RepositoryManifest)
+
+      assert Service.graph_name(service, EX.SystemGraph1, strict: true) ==
+               RDF.iri(EX.SystemGraph1)
+    end
+
+    test "strict: false returns graph ID even for non-existent graphs", %{service: service} do
+      assert Service.graph_name(service, EX.NonExistentGraph, strict: false) ==
+               RDF.iri(EX.NonExistentGraph)
+    end
+
+    test "strict: false returns graph ID for existing graphs", %{service: service} do
+      assert Service.graph_name(service, EX.RepositoryManifest, strict: false) ==
+               RDF.iri(EX.RepositoryManifest)
+
+      assert Service.graph_name(service, EX.SystemGraph1, strict: false) ==
+               RDF.iri(EX.SystemGraph1)
+    end
+
+    test "strict: true still returns local name mappings when present", %{service: service} do
+      assert Service.graph_name(service, EX.DataGraph2, strict: true) == RDF.bnode(:graph2)
+    end
+
+    test "strict: false still returns local name mappings when present", %{service: service} do
+      assert Service.graph_name(service, EX.DataGraph2, strict: false) == RDF.bnode(:graph2)
+    end
+
+    test "handles nil", %{service: service} do
+      assert Service.graph_name(service, nil) == nil
+      assert Service.graph_name(service, nil, strict: false) == nil
+      assert Service.graph_name(service, nil, strict: true) == nil
     end
   end
 
@@ -255,47 +611,6 @@ defmodule DCATR.ServiceTest do
       assert Map.has_key?(mapping, :default)
       assert Map.has_key?(mapping, RDF.bnode(:graph2))
       assert Map.has_key?(mapping, RDF.iri(EX.WorkingGraph1Name))
-    end
-  end
-
-  describe "add_graph_name/3" do
-    setup :example_service_scenario
-
-    test "adds a new graph name mapping", %{service: service, system_graphs: [graph | _]} do
-      assert {:ok, updated} = Service.add_graph_name(service, EX.NewName, EX.SystemGraph1)
-
-      assert updated.graph_names[RDF.iri(EX.NewName)] == RDF.iri(EX.SystemGraph1)
-      assert updated.graph_names_by_id[RDF.iri(EX.SystemGraph1)] == RDF.iri(EX.NewName)
-      assert Service.graph_by_name(updated, EX.NewName) == graph
-    end
-
-    test "adds :default mapping", %{service: service, data_graphs: [_, graph2]} do
-      service = %{service | graph_names: %{}, graph_names_by_id: %{}}
-
-      assert {:ok, updated} = Service.add_graph_name(service, :default, EX.DataGraph2)
-
-      assert updated.graph_names[:default] == RDF.iri(EX.DataGraph2)
-      assert updated.graph_names_by_id[RDF.iri(EX.DataGraph2)] == :default
-      assert Service.default_graph(updated) == graph2
-    end
-
-    test "returns error for duplicate graph name", %{service: service} do
-      assert Service.add_graph_name(service, EX.WorkingGraph1Name, EX.SystemGraph1) ==
-               {:error, %DCATR.DuplicateGraphNameError{name: RDF.iri(EX.WorkingGraph1Name)}}
-    end
-
-    test "returns error for non-existent graph", %{service: service} do
-      assert Service.add_graph_name(service, EX.NewName, EX.NonExistent) ==
-               {:error, %DCATR.GraphNotFoundError{graph_id: RDF.iri(EX.NonExistent)}}
-    end
-
-    test "blank node stability", %{service: service, data_graphs: [_, graph2]} do
-      service = %{service | graph_names: %{}, graph_names_by_id: %{}}
-
-      assert {:ok, updated} = Service.add_graph_name(service, RDF.bnode("test"), EX.DataGraph2)
-
-      assert updated.graph_names[RDF.bnode("test")] == RDF.iri(EX.DataGraph2)
-      assert Service.graph_by_name(updated, RDF.bnode("test")) == graph2
     end
   end
 
@@ -315,13 +630,13 @@ defmodule DCATR.ServiceTest do
     test "returns the default graph when one is designated", context do
       manifest_rdf = RDF.graph({EX.DataGraph1, RDF.type(), DCATR.DefaultGraph})
 
-      {:ok, service} = Service.on_load(context.service, manifest_rdf, [])
+      {:ok, service} = Service.load_graph_names(context.service, manifest_rdf)
 
       assert Service.default_graph(service) == context.data_graph1
     end
 
     test "returns nil when no default graph is designated", %{service: service} do
-      {:ok, service} = Service.on_load(service, RDF.graph(), [])
+      {:ok, service} = Service.load_graph_names(service, RDF.graph())
       assert Service.default_graph(service) == nil
     end
 
@@ -332,11 +647,11 @@ defmodule DCATR.ServiceTest do
         |> RDF.Graph.add({EX.DataGraph2, RDF.type(), DCATR.DefaultGraph})
 
       assert {:error, %DCATR.DuplicateGraphNameError{name: :default}} =
-               Service.on_load(context.service, manifest_rdf, [])
+               Service.load_graph_names(context.service, manifest_rdf)
     end
   end
 
-  describe "on_load/3" do
+  describe "load_graph_names/2" do
     setup do
       {:ok, %{service: example_service(with_graph_names: false)}}
     end
@@ -347,7 +662,7 @@ defmodule DCATR.ServiceTest do
         |> RDF.Graph.add({EX.DataGraph1, DCATR.localGraphName(), EX.main()})
         |> RDF.Graph.add({EX.DataGraph2, DCATR.localGraphName(), RDF.bnode(:secondary)})
 
-      assert {:ok, loaded} = Service.on_load(service, manifest_rdf, [])
+      assert {:ok, loaded} = Service.load_graph_names(service, manifest_rdf)
 
       assert loaded.graph_names[RDF.iri(EX.main())] == RDF.iri(EX.DataGraph1)
       assert loaded.graph_names[RDF.bnode(:secondary)] == RDF.iri(EX.DataGraph2)
@@ -361,7 +676,7 @@ defmodule DCATR.ServiceTest do
         RDF.graph()
         |> RDF.Graph.add({EX.DataGraph1, RDF.type(), DCATR.DefaultGraph})
 
-      assert {:ok, loaded} = Service.on_load(service, manifest_rdf, [])
+      assert {:ok, loaded} = Service.load_graph_names(service, manifest_rdf)
       assert loaded.graph_names[:default] == RDF.iri(EX.DataGraph1)
       assert loaded.graph_names_by_id[RDF.iri(EX.DataGraph1)] == :default
     end
@@ -372,7 +687,7 @@ defmodule DCATR.ServiceTest do
         |> RDF.Graph.add({EX.DataGraph1, DCATR.localGraphName(), EX.main()})
         |> RDF.Graph.add({EX.DataGraph2, DCATR.localGraphName(), EX.main()})
 
-      assert Service.on_load(service, manifest_rdf, []) ==
+      assert Service.load_graph_names(service, manifest_rdf) ==
                {:error, %DCATR.DuplicateGraphNameError{name: EX.main()}}
     end
 
@@ -381,7 +696,7 @@ defmodule DCATR.ServiceTest do
         RDF.graph()
         |> RDF.Graph.add({EX.NonExistentGraph, DCATR.localGraphName(), EX.main()})
 
-      assert Service.on_load(service, manifest_rdf, []) ==
+      assert Service.load_graph_names(service, manifest_rdf) ==
                {:error, %DCATR.GraphNotFoundError{graph_id: RDF.iri(EX.NonExistentGraph)}}
     end
 
@@ -390,7 +705,7 @@ defmodule DCATR.ServiceTest do
         RDF.graph()
         |> RDF.Graph.add({EX.NonExistentGraph, RDF.type(), DCATR.DefaultGraph})
 
-      assert Service.on_load(service, manifest_rdf, []) ==
+      assert Service.load_graph_names(service, manifest_rdf) ==
                {:error, %DCATR.GraphNotFoundError{graph_id: RDF.iri(EX.NonExistentGraph)}}
     end
   end

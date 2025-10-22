@@ -1,0 +1,18 @@
+@prefix dcatr: <https://w3id.org/dcat-r#> .
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
+@prefix ex: <http://example.com/> .
+
+# ServiceManifestGraph
+GRAPH _:service-manifest {
+  ex:Service a dcatr:Service ;
+    dcatr:serviceRepository ex:Repository .
+}
+
+# RepositoryManifestGraph
+GRAPH _:repository-manifest {
+  ex:Repository a dcatr:Repository ;
+    dcatr:repositoryDataset ex:Dataset ;
+    dcatr:repositoryManifestGraph ex:RepositoryManifest .
+
+  ex:Dataset a dcatr:Dataset .
+}

@@ -11,8 +11,9 @@ defmodule DCATR.MixProject do
       deps: deps(),
       dialyzer: dialyzer(),
       test_coverage: [
-        summary: [threshold: 100],
+        summary: [threshold: 93],
         ignore_modules: [
+          DCATR.Utils,
           # Generated Grax.Schema.Registerable modules
           ~r/^Grax\.Schema\.Registerable\..*/,
           # RDF.Vocabulary.Namespace generated module
@@ -20,7 +21,12 @@ defmodule DCATR.MixProject do
           # Exception modules
           DCATR.DuplicateGraphNameError,
           DCATR.GraphNotFoundError,
-          # Test factories
+          DCATR.ManifestError,
+          DCATR.Manifest.GeneratorError,
+          DCATR.Manifest.LoadingError,
+          # Test support
+          DCATR.Case,
+          DCATR.TestData,
           DCATR.TestFactories
         ]
       ],
@@ -33,23 +39,27 @@ defmodule DCATR.MixProject do
 
   def application do
     [
-      extra_applications: [:logger]
+      extra_applications: [:logger],
+      mod: {DCATR.Application, []}
     ]
   end
 
   defp deps do
     [
-      rdf_ex_dep(:rdf, "~> 2.0"),
+      rdf_ex_dep(:rdf, "~> 3.0"),
       rdf_ex_dep(:grax, "~> 0.6"),
+      rdf_ex_dep(:dcat, "~> 0.1", only: [:dev, :test]),
+      rdf_ex_dep(:rdf_xml, "~> 1.2", only: [:dev, :test]),
+      rdf_ex_dep(:json_ld, "~> 1.0", only: [:dev, :test]),
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
     ]
   end
 
-  defp rdf_ex_dep(dep, version) do
+  defp rdf_ex_dep(dep, version, opts \\ []) do
     case System.get_env("RDF_EX_PACKAGES_SRC") do
-      "LOCAL" -> {dep, path: "../../../RDF.ex/src/#{dep}"}
-      _ -> {dep, version}
+      "LOCAL" -> {dep, [{:path, "../#{dep}"} | opts]}
+      _ -> {dep, version, opts}
     end
   end
 

@@ -1,0 +1,16 @@
+@prefix dcatr: <https://w3id.org/dcat-r#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+<Repository> a dcatr:Repository
+    ; dcatr:repositoryDataset <Dataset>
+    ; dcatr:repositoryManifestGraph <RepositoryManifestGraph>
+    ; dcterms:title "dev repository"
+    ; dcterms:creator <User>
+    ; dcterms:publisher <User>
+.
+
+<Dataset> a dcatr:Dataset
+    ; dcterms:title "dev dataset"
+    ; dcterms:creator <User>
+    ; dcterms:publisher <User>
+.

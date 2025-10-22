@@ -21,89 +21,15 @@ defmodule DCATR.ServiceData do
   to struct fields via the `DCAT.Catalog` schema from DCAT.ex.
   """
 
-  use Grax.Schema
+  use DCATR.ServiceData.Type
 
   schema DCATR.ServiceData do
     link manifest_graph: DCATR.serviceManifestGraph(),
          type: DCATR.ServiceManifestGraph,
-         required: true
+         required: true,
+         depth: +1
 
-    link working_graphs: DCATR.serviceWorkingGraph(), type: list_of(DCATR.WorkingGraph)
-    link system_graphs: DCATR.serviceSystemGraph(), type: list_of(DCATR.SystemGraph)
-  end
-
-  @type id_or_selector :: :manifest | RDF.IRI.coercible()
-  @type graph_type :: :manifest | :working | :system
-
-  @doc """
-  Returns a graph by ID or special selector.
-  """
-  @spec graph(t(), id_or_selector()) :: DCATR.Graph.t() | nil
-  def graph(service_data, id_or_selector)
-  def graph(%_{manifest_graph: manifest_graph}, :manifest), do: manifest_graph
-
-  def graph(%_{} = service_data, id) do
-    find_graph_by_id(service_data, RDF.coerce_graph_name(id))
-  end
-
-  defp find_graph_by_id(%_{manifest_graph: %{__id__: id} = graph}, id), do: graph
-
-  defp find_graph_by_id(%_{} = service_data, id) do
-    Enum.find(service_data.working_graphs, fn g -> g.__id__ == id end) ||
-      Enum.find(service_data.system_graphs, fn g -> g.__id__ == id end)
-  end
-
-  @doc """
-  Returns all graphs in the service data catalog.
-
-  ## Options
-
-  - `:type` - filter by type (`:working`, `:system`, `:manifest`) or a list of types
-
-  ## Examples
-
-      # Get all graphs
-      ServiceData.graphs(service_data)
-
-      # Get only working graphs
-      ServiceData.graphs(service_data, type: :working)
-
-      # Get both manifest and working graphs
-      ServiceData.graphs(service_data, type: [:manifest, :working])
-  """
-  @spec graphs(t(), type: graph_type() | [graph_type()]) :: [DCATR.Graph.t()]
-  def graphs(%_service_data_type{} = service_data, opts \\ []) do
-    case Keyword.get(opts, :type) do
-      nil -> collect_graphs(service_data)
-      types when is_list(types) -> Enum.flat_map(types, &graphs(service_data, type: &1))
-      :manifest -> List.wrap(service_data.manifest_graph)
-      :working -> service_data.working_graphs
-      :system -> service_data.system_graphs
-      _ -> []
-    end
-  end
-
-  defp collect_graphs(service_data) do
-    [service_data.manifest_graph | service_data.system_graphs ++ service_data.working_graphs]
-  end
-
-  @doc """
-  Returns all working graphs.
-  """
-  @spec working_graphs(t()) :: [DCATR.WorkingGraph.t()]
-  def working_graphs(%_service_data_type{working_graphs: graphs}), do: graphs
-
-  @doc """
-  Returns local system graphs.
-  """
-  @spec system_graphs(t()) :: [DCATR.SystemGraph.t()]
-  def system_graphs(%_service_data_type{system_graphs: graphs}), do: graphs
-
-  @doc """
-  Checks if a graph exists in the service data.
-  """
-  @spec has_graph?(t(), id_or_selector()) :: boolean()
-  def has_graph?(%_service_data_type{} = service_data, id_or_selector) do
-    graph(service_data, id_or_selector) != nil
+    link working_graphs: DCATR.serviceWorkingGraph(), type: list_of(DCATR.WorkingGraph), depth: +1
+    link system_graphs: DCATR.serviceSystemGraph(), type: list_of(DCATR.SystemGraph), depth: +1
   end
 end

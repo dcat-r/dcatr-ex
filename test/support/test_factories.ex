@@ -77,7 +77,8 @@ defmodule DCATR.TestFactories do
     SystemGraph,
     RepositoryManifestGraph,
     ServiceManifestGraph,
-    WorkingGraph
+    WorkingGraph,
+    Manifest
   }
 
   alias DCATR.Case.EX
@@ -312,6 +313,63 @@ defmodule DCATR.TestFactories do
     |> example_repository_scenario()
     |> example_service_data_scenario()
     |> Map.put(:service, example_service())
+  end
+
+  ###########################################################################
+  # Manifest
+
+  def manifest(opts \\ []) do
+    {id, opts} = Keyword.pop(opts, :id, RDF.iri(EX.Manifest))
+    {validate?, opts} = Keyword.pop(opts, :validate, true)
+    service = Keyword.get(opts, :service, service())
+    dataset = Keyword.get_lazy(opts, :dataset, fn -> manifest_dataset(service) end)
+
+    opts
+    |> Keyword.put(:service, service)
+    |> Keyword.put(:dataset, dataset)
+    |> Keyword.put_new(:load_path, "/test")
+    |> then(&Manifest.build!(id, &1))
+    |> then(fn manifest ->
+      if validate?, do: Grax.validate!(manifest), else: manifest
+    end)
+  end
+
+  def partial_manifest(opts \\ []) do
+    opts
+    |> Keyword.put(:validate, false)
+    |> manifest()
+  end
+
+  def example_manifest() do
+    manifest(service: example_service())
+  end
+
+  def example_manifest_scenario(context \\ %{}) do
+    context
+    |> example_service_scenario()
+    |> Map.put(:manifest, example_manifest())
+  end
+
+  def manifest_dataset(service) do
+    service_graph =
+      [
+        service.__id__
+        |> RDF.type(RDF.iri(service.__class__()))
+        |> DCATR.serviceRepository(service.repository.__id_)
+        |> DCATR.serviceLocalData(service.local_data.__id_),
+        service.local_data.__id__
+        |> DCATR.serviceManifestGraph(service.local_data.manifest_graph.__id__)
+      ]
+      |> RDF.Graph.new(name: RDF.bnode("service-manifest"))
+
+    repo_graph =
+      service.repository.__id__
+      |> RDF.type(RDF.iri(service.repository.__class__()))
+      |> DCATR.repositoryDataset(service.repository.dataset.__id__)
+      |> DCATR.repositoryManifestGraph(service.repository.manifest_graph.__id__)
+      |> RDF.Graph.new(name: RDF.bnode("repository-manifest"))
+
+    RDF.Dataset.new([service_graph, repo_graph])
   end
 
   ###########################################################################

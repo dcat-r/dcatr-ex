@@ -119,11 +119,11 @@ defmodule DCATR.ServiceDataTest do
   describe "graph/2" do
     setup :example_service_data_scenario
 
-    test "returns manifest with :manifest selector", %{
+    test "returns manifest with :service_manifest selector", %{
       service_data: service_data,
       service_manifest: manifest
     } do
-      assert ServiceData.graph(service_data, :manifest) == manifest
+      assert ServiceData.graph(service_data, :service_manifest) == manifest
     end
 
     test "returns graph by ID", %{
@@ -143,6 +143,15 @@ defmodule DCATR.ServiceDataTest do
     test "returns nil for non-existent graph", %{service_data: service_data} do
       assert ServiceData.graph(service_data, EX.NonExistent) == nil
     end
+  end
+
+  test "resolve_graph_selector/2" do
+    service_data = example_service_data()
+
+    assert ServiceData.resolve_graph_selector(service_data, :service_manifest) ==
+             service_data.manifest_graph
+
+    assert ServiceData.resolve_graph_selector(service_data, :unknown_selector) == nil
   end
 
   describe "graphs/2" do
@@ -258,8 +267,8 @@ defmodule DCATR.ServiceDataTest do
       assert ServiceData.has_graph?(service_data, manifest.__id__)
     end
 
-    test "returns true for manifest selector", %{service_data: service_data} do
-      assert ServiceData.has_graph?(service_data, :manifest)
+    test "returns true for :service_manifest selector", %{service_data: service_data} do
+      assert ServiceData.has_graph?(service_data, :service_manifest)
     end
 
     test "returns false for non-existent graphs", %{service_data: service_data} do

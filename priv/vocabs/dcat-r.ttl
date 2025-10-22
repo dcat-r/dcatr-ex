@@ -206,7 +206,7 @@ BEST PRACTICE: The graph MUST have its own URI distinct from the repository URI 
 - {repository-uri}#manifest
 - {repository-base}/catalog/manifest
 
-The self-reference is managed through the dcatr:repositoryManifest property which explicitly links the repository to its manifest graph. This pattern acknowledges that metadata about a system can be part of that system while maintaining clear boundaries through URI separation."""
+The self-reference is managed through the dcatr:repositoryManifestGraph property which explicitly links the repository to its manifest graph. This pattern acknowledges that metadata about a system can be part of that system while maintaining clear boundaries through URI separation."""
     .
 
 ##########################################################################
@@ -232,3 +232,21 @@ dcatr:SystemGraph a rdfs:Class, owl:Class
         ; rdfs:comment "Base class for system-specific operational graphs that implement repository mechanisms such as version history, indexes, or application-specific operational data. System graphs are distinct from manifest graphs (which contain configuration) and are typically distributed as part of the repository."
 .
 
+
+##########################################################################
+# Manifest
+##########################################################################
+
+dcatr:Manifest a rdfs:Class, owl:Class
+        ; rdfs:subClassOf foaf:Document
+        ; rdfs:label "Manifest"
+        ; rdfs:comment "Document that describes a DCAT-R service configuration, including repository and dataset settings and their metadata."
+.
+
+    dcatr:manifestService a rdf:Property, owl:ObjectProperty, owl:FunctionalProperty
+            ; rdfs:subPropertyOf foaf:primaryTopic
+            ; rdfs:domain dcatr:Manifest
+            ; rdfs:range  dcatr:Service
+            ; rdfs:label "manifest service"
+            ; rdfs:comment "Links a manifest to its configured service."
+    .

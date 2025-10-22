@@ -1,0 +1,163 @@
+@prefix dcatr: <https://w3id.org/dcat-r#> .
+@prefix dcat:  <http://www.w3.org/ns/dcat#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix ex:    <http://example.org/> .
+@prefix local: <http://localhost/graphs/> .
+
+# Scenario 4: Mixed Graph Names with Repository Manifest Graph as Default
+# =======================================================================
+# This example demonstrates a more complex, realistic scenario where:
+# - Some graphs use their global URIs directly (stable ontologies, reference data)
+# - Other graphs have local aliases (versioned data, operational data)
+# - The repository manifest graph is designated as the default graph
+# This allows flexibility in naming based on the nature and lifecycle of each graph.
+
+################################################################################
+# MANIFEST GRAPHS (Configuration/Metadata)
+################################################################################
+
+# Service Manifest Graph (selective local naming)
+_:service-manifest {
+    ex:service-manifest a dcatr:ServiceManifestGraph ;
+        dcat:title "Service Configuration" .
+
+    ex:service-data a dcatr:ServiceData ;
+        dcatr:serviceManifestGraph ex:service-manifest .
+
+    ex:myService a dcatr:Service ;
+        dcatr:serviceRepository ex:myRepository ;
+        dcatr:serviceLocalData ex:service-data .
+
+    # Local naming only for frequently accessed or versioned graphs
+    ex:transactions-2024-09 dcatr:localGraphName local:transactions .
+    ex:analytics-2024-09 dcatr:localGraphName local:dashboard .
+
+    # Note: ex:core-ontology and ex:reference-data have no local names
+    # They are always accessed by their global URIs
+
+    # Default graph designation (service-local configuration)
+    # The repository manifest is designated as default for easy metadata access
+    ex:repository-manifest a dcatr:DefaultGraph
+}
+
+# Repository Manifest Graph
+_:repository-manifest {
+    ex:repository-manifest a dcatr:RepositoryManifestGraph ;
+        dcat:title "Repository Metadata" ;
+        dcat:description "Repository metadata and catalog" .
+
+    ex:myRepository a dcatr:Repository ;
+        dcatr:repositoryDataset ex:myDataset ;
+        dcatr:repositoryManifestGraph ex:repository-manifest ;
+        dcatr:repositorySystemGraph ex:history-graph .
+
+    ex:myDataset a dcatr:Dataset ;
+        dcatr:dataGraph ex:core-ontology ,
+                        ex:transactions-2024-09 ,
+                        ex:analytics-2024-09 ,
+                        ex:reference-data .
+
+    # Core ontology - stable, uses global name only
+    ex:core-ontology a dcatr:DataGraph ;
+        dcat:title "Core Business Ontology" ;
+        dcat:description "Fundamental business concepts and relationships" ;
+        dcterms:conformsTo <http://www.w3.org/2002/07/owl#Ontology> ;
+        dcat:keyword "ontology", "stable", "core" .
+
+    # Transactions - versioned data with local alias for convenience
+    ex:transactions-2024-09 a dcatr:DataGraph ;
+        dcat:title "September 2024 Transactions" ;
+        dcat:description "All financial transactions for September 2024" ;
+        dcat:temporalResolution "P1M"^^<http://www.w3.org/2001/XMLSchema#duration> ;
+        dcat:issued "2024-09-01"^^<http://www.w3.org/2001/XMLSchema#date> ;
+        dcat:keyword "transactions", "financial", "monthly" .
+
+    # Analytics - frequently accessed, benefits from semantic local name
+    ex:analytics-2024-09 a dcatr:DataGraph ;
+        dcat:title "Analytics Dashboard Data" ;
+        dcat:description "Pre-computed analytics for dashboard display" ;
+        dcat:accrualPeriodicity "P1D"^^<http://www.w3.org/2001/XMLSchema#duration> ;
+        dcat:issued "2024-09-01"^^<http://www.w3.org/2001/XMLSchema#date> ;
+        dcat:keyword "analytics", "dashboard", "metrics" .
+
+    # Reference data - stable, uses global name only
+    ex:reference-data a dcatr:DataGraph ;
+        dcat:title "Static Reference Data" ;
+        dcat:description "Country codes, currency codes, and other reference data" ;
+        dcterms:conformsTo <http://www.iso.org/iso-3166> ;
+        dcat:keyword "reference", "static", "codes" .
+}
+
+################################################################################
+# SYSTEM GRAPHS (Not part of the user dataset)
+################################################################################
+
+# System Graph (not part of the user dataset)
+ex:history-graph {
+    ex:history-graph a dcatr:SystemGraph ;
+        dcat:title "Repository History" ;
+        dcat:description "Version control and change tracking for the repository" .
+
+    # History tracking metadata would be here
+    # Example:
+    # ex:commit-001 a ex:Commit ;
+    #     ex:timestamp "2024-09-22T10:30:00Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> ;
+    #     ex:author "System Admin" ;
+    #     ex:message "Initial repository setup" .
+}
+
+################################################################################
+# USER DATA GRAPHS (Illustrative Examples)
+################################################################################
+# These graphs contain example data to illustrate what the manifests describe.
+# Some use their global names directly (ontology, reference data),
+# others are accessed via local names (transactions, dashboard).
+
+# Always accessed by global name
+ex:core-ontology {
+    # Ontology definitions
+    # Example:
+    # ex:Customer a owl:Class ;
+    #     rdfs:label "Customer" ;
+    #     rdfs:comment "A person or organization that purchases products" .
+    #
+    # ex:Product a owl:Class ;
+    #     rdfs:label "Product" ;
+    #     rdfs:comment "An item available for purchase" .
+}
+
+# local name for ex:transactions-2024-09 graph
+local:transactions {
+    # Transaction data for September 2024
+    # Accessible as local:transactions in the service
+    # Example:
+    # ex:txn-2024-09-001 a ex:Transaction ;
+    #     ex:amount 150.00 ;
+    #     ex:currency "USD" ;
+    #     ex:date "2024-09-15"^^<http://www.w3.org/2001/XMLSchema#date> .
+}
+
+# local name for ex:analytics-2024-09 graph
+local:dashboard {
+    # Pre-computed analytics data
+    # Accessible as local:dashboard in the service
+    # Example:
+    # ex:metrics-2024-09 a ex:MetricsSnapshot ;
+    #     ex:totalRevenue 45000.00 ;
+    #     ex:activeCustomers 1250 ;
+    #     ex:conversionRate 0.035 .
+}
+
+# Always accessed by global name
+ex:reference-data {
+    # Static reference data
+    # Example:
+    # ex:USD a ex:Currency ;
+    #     ex:code "USD" ;
+    #     ex:name "United States Dollar" ;
+    #     ex:symbol "$" .
+    #
+    # ex:USA a ex:Country ;
+    #     ex:code "US" ;
+    #     ex:name "United States of America" .
+}
