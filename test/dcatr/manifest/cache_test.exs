@@ -163,7 +163,12 @@ defmodule DCATR.Manifest.CacheTest do
   defp modify(manifest_file) do
     File.write!(
       manifest_file,
-      "<http://example.com/Repository> <http://purl.org/dc/elements/1.1/title> \"new title\" .",
+      """
+
+      _:repository-manifest {
+        <http://example.com/Repository> <http://purl.org/dc/elements/1.1/title> "new title" .
+      }
+      """,
       [:append]
     )
   end

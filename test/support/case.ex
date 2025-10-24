@@ -19,6 +19,7 @@ defmodule DCATR.Case do
       alias RDF.{IRI, BlankNode, Literal}
       alias DCATR.TestData
 
+      alias DCAT.NS.DCTerms
       alias unquote(__MODULE__).EX
       @compile {:no_warn_undefined, DCATR.Case.EX}
 

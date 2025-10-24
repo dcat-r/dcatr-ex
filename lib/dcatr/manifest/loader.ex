@@ -4,7 +4,7 @@ defmodule DCATR.Manifest.Loader do
   """
 
   alias DCATR.Manifest
-  alias DCATR.Manifest.{LoadPath, LoadingError}
+  alias DCATR.Manifest.{LoadPath, GraphExpansion, LoadingError}
   alias DCATR.ManifestError
 
   @service_manifest_graph_name RDF.bnode("service-manifest")
@@ -112,7 +112,8 @@ defmodule DCATR.Manifest.Loader do
       |> Keyword.put_new(:load_path, load_path)
       |> Keyword.put_new(:manifest_type, manifest_type)
 
-    with {:ok, dataset} <- manifest_type.load_dataset(opts) do
+    with {:ok, dataset} <- manifest_type.load_dataset(opts),
+         {:ok, dataset} <- GraphExpansion.expand_dataset(dataset, opts) do
       manifest =
         dataset
         |> manifest_id(opts)

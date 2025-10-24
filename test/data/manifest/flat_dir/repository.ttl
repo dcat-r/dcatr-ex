@@ -3,4 +3,5 @@
 
 <http://example.com/Repository> a dcatr:Repository ;
     dcatr:repositoryDataset <http://example.com/Dataset> ;
-    dcatr:repositoryManifestGraph <http://example.com/RepositoryManifestGraph> .
+    dcatr:repositoryManifestGraph <http://example.com/RepositoryManifestGraph> ;
+    dcterms:creator <http://example.com/Agent> .

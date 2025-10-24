@@ -3,5 +3,6 @@
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 
 <http://example.com/Service> a dcatr:Service ;
-    dcatr:serviceRepository <http://example.com/Repository>
+    dcatr:serviceRepository <http://example.com/Repository> ;
+    dcterms:creator <http://example.com/Agent>
 .

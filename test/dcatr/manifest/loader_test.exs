@@ -40,6 +40,55 @@ defmodule DCATR.Manifest.LoaderTest do
     end
   end
 
+  describe "load/2 manifest loading with MGE" do
+    test "expands shared agent from default graph into repository manifest" do
+      assert {:ok, manifest} =
+               Loader.load(DCATR.Manifest, load_path: TestData.manifest("flat_dir"))
+
+      # Agent defined in agent.ttl (Default Graph)
+      # Referenced from flat_dir/repository.ttl via dcterms:creator
+      assert Graph.include?(
+               Dataset.graph(manifest.dataset, ~B<repository-manifest>),
+               [
+                 {~I<http://example.com/Agent>, FOAF.name(), ~L"Max Mustermann"},
+                 {~I<http://example.com/Agent>, FOAF.mbox(),
+                  ~I<mailto:max.mustermann@example.com>}
+               ]
+             )
+    end
+
+    test "shared agent expanded into both service and repository manifests" do
+      assert {:ok, manifest} =
+               Loader.load(DCATR.Manifest, load_path: TestData.manifest("nested_dir"))
+
+      # Agent defined in agent.ttl (Default Graph)
+      # Referenced from BOTH service/service.ttl and repository/repository.ttl
+      assert Graph.include?(
+               Dataset.graph(manifest.dataset, ~B<service-manifest>),
+               {~I<http://example.com/Agent>, FOAF.name(), ~L"Max Mustermann"}
+             )
+
+      assert Graph.include?(
+               Dataset.graph(manifest.dataset, ~B<repository-manifest>),
+               {~I<http://example.com/Agent>, FOAF.name(), ~L"Max Mustermann"}
+             )
+    end
+
+    test "MGE disabled with depth 0" do
+      assert {:ok, manifest} =
+               Loader.load(DCATR.Manifest,
+                 load_path: TestData.manifest("flat_dir"),
+                 depth: 0
+               )
+
+      # Agent NOT expanded when MGE disabled
+      refute Graph.include?(
+               Dataset.graph(manifest.dataset, ~B<repository-manifest>),
+               {~I<http://example.com/Agent>, FOAF.name(), ~L"Max Mustermann"}
+             )
+    end
+  end
+
   test "base/0,1" do
     assert Loader.base() == nil
 
@@ -236,7 +285,8 @@ defmodule DCATR.Manifest.LoaderTest do
                  EX.Repository
                  |> RDF.type(DCATR.Repository)
                  |> DCATR.repositoryDataset(EX.Dataset)
-                 |> DCATR.repositoryManifestGraph(EX.RepositoryManifestGraph),
+                 |> DCATR.repositoryManifestGraph(EX.RepositoryManifestGraph)
+                 |> DCTerms.creator(EX.Agent),
                  EX.Dataset
                  |> RDF.type(DCATR.Dataset)
                  |> DCTerms.title("test dataset")
@@ -267,6 +317,7 @@ defmodule DCATR.Manifest.LoaderTest do
                EX.Service
                |> RDF.type(DCATR.Service)
                |> DCATR.serviceRepository(EX.Repository)
+               |> DCTerms.creator(EX.Agent)
                |> Graph.new(
                  prefixes: [dcatr: DCATR, dcterms: DCTerms, foaf: FOAF],
                  name: ~B<service-manifest>
@@ -277,7 +328,8 @@ defmodule DCATR.Manifest.LoaderTest do
                  EX.Repository
                  |> RDF.type(DCATR.Repository)
                  |> DCATR.repositoryDataset(EX.Dataset)
-                 |> DCATR.repositoryManifestGraph(EX.RepositoryManifestGraph),
+                 |> DCATR.repositoryManifestGraph(EX.RepositoryManifestGraph)
+                 |> DCTerms.creator(EX.Agent),
                  EX.Dataset
                  |> RDF.type(DCATR.Dataset)
                  |> DCTerms.title("test dataset")
