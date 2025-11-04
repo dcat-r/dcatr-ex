@@ -23,6 +23,8 @@ defmodule DCATR.ServiceData do
 
   use DCATR.ServiceData.Type
 
+  import DCATR.Utils, only: [bang!: 2]
+
   schema DCATR.ServiceData do
     link manifest_graph: DCATR.serviceManifestGraph(),
          type: DCATR.ServiceManifestGraph,
@@ -32,4 +34,12 @@ defmodule DCATR.ServiceData do
     link working_graphs: DCATR.serviceWorkingGraph(), type: list_of(DCATR.WorkingGraph), depth: +1
     link system_graphs: DCATR.serviceSystemGraph(), type: list_of(DCATR.SystemGraph), depth: +1
   end
+
+  def new(id, opts \\ []) do
+    with {:ok, struct} <- build(id, opts) do
+      Grax.validate(struct)
+    end
+  end
+
+  def new!(id, opts \\ []), do: bang!(&new/2, [id, opts])
 end

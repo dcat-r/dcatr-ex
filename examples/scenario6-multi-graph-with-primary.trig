@@ -1,0 +1,94 @@
+@prefix dcatr: <https://w3id.org/dcat-r#> .
+@prefix dcat:  <http://www.w3.org/ns/dcat#> .
+@prefix ex:    <http://example.org/> .
+@prefix local: <http://localhost/graphs/> .
+
+# Scenario 6: Multi-Graph with Primary Designation
+# ==================================================
+# This example demonstrates the dual-use pattern of repositoryPrimaryGraph:
+# - A repository with multiple graphs (via repositoryDataset)
+# - One graph designated as primary (via repositoryPrimaryGraph)
+# - The primary graph is also listed in the dataset (consistency)
+# - All graphs accessed by global URI only (no local naming)
+# - Demonstrates explicit disabling of auto-designation via usePrimaryAsDefault: false
+#
+# This shows how repositoryPrimaryGraph serves both as:
+# 1. Single-graph shortcut (when dataset is nil)
+# 2. Primary designation (when dataset is present)
+
+################################################################################
+# MANIFEST GRAPHS (Configuration/Metadata)
+################################################################################
+
+# Service Manifest Graph (local configuration)
+_:service-manifest {
+    ex:myService a dcatr:Service ;
+        dcatr:serviceRepository ex:myRepository ;
+				# Without this property, the primary would automatically become the default
+				# (since it has no other local name). Set to true to enforce primary=default
+				# and error on conflicts.
+        dcatr:usePrimaryAsDefault false .
+
+    # No local name mappings - all graphs accessed by global URI only
+}
+
+# Repository Manifest Graph
+_:repository-manifest {
+    ex:myRepository a dcatr:Repository ;
+        dcatr:repositoryPrimaryGraph ex:main-graph ;
+        dcatr:repositoryDataset ex:myDataset ;
+        dcatr:repositoryManifestGraph ex:repository-manifest .
+
+    # NOTE: Both repositoryPrimaryGraph AND repositoryDataset present (dual-use mode)
+    # The primary graph (ex:main-graph) is also listed in the dataset below
+
+    ex:repository-manifest a dcatr:RepositoryManifestGraph ;
+        dcat:title "Repository Metadata" .
+
+    # Dataset with multiple graphs
+    ex:myDataset a dcatr:Dataset ;
+        dcatr:dataGraph ex:main-graph ,
+                        ex:aux-graph-1 ,
+                        ex:aux-graph-2 .
+
+    # The primary graph
+    ex:main-graph a dcatr:DataGraph ;
+        dcat:title "Main Knowledge Graph" ;
+        dcat:description "The primary knowledge graph containing core domain concepts" .
+
+    # Auxiliary graphs
+    ex:aux-graph-1 a dcatr:DataGraph ;
+        dcat:title "Auxiliary Graph 1" ;
+        dcat:description "Supporting data for the main knowledge graph" .
+
+    ex:aux-graph-2 a dcatr:DataGraph ;
+        dcat:title "Auxiliary Graph 2" ;
+        dcat:description "Additional supporting data" .
+}
+
+################################################################################
+# USER DATA GRAPHS (Illustrative Examples)
+################################################################################
+
+# The primary data graph (physically named with global URI)
+ex:main-graph {
+    # Core domain data would be here
+    # Example:
+    # ex:concept-001 a ex:Concept ;
+    #     ex:prefLabel "Core Concept" ;
+    #     ex:definition "A fundamental concept in the domain" .
+}
+
+ex:aux-graph-1 {
+    # Supporting data would be here
+    # Example:
+    # ex:reference-001 a ex:Reference ;
+    #     ex:title "Reference Document" .
+}
+
+ex:aux-graph-2 {
+    # Additional supporting data would be here
+    # Example:
+    # ex:metadata-001 a ex:Metadata ;
+    #     ex:created "2024-01-01" .
+}

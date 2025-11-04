@@ -5,11 +5,11 @@ defmodule DCATR.ServiceDataTest do
 
   alias DCATR.ServiceData
 
-  describe "build/1,2" do
+  describe "new/1,2" do
     test "with IRI" do
       manifest_graph_id = RDF.bnode("service-manifest")
 
-      assert ServiceData.build(EX.ServiceData1, manifest_graph: manifest_graph_id) ==
+      assert ServiceData.new(EX.ServiceData1, manifest_graph: manifest_graph_id) ==
                {:ok,
                 %ServiceData{
                   __id__: RDF.iri(EX.ServiceData1),
@@ -23,7 +23,7 @@ defmodule DCATR.ServiceDataTest do
       bnode = bnode()
       manifest = service_manifest_graph()
 
-      assert ServiceData.build(bnode, manifest_graph: manifest) ==
+      assert ServiceData.new(bnode, manifest_graph: manifest) ==
                {:ok,
                 %ServiceData{
                   __id__: bnode,
@@ -41,7 +41,7 @@ defmodule DCATR.ServiceDataTest do
       system1 = system_graph()
       system2 = system_graph()
 
-      assert ServiceData.build(bnode,
+      assert ServiceData.new(bnode,
                manifest_graph: manifest,
                working_graphs: [working1, working2],
                system_graphs: [system1, system2]
@@ -63,7 +63,7 @@ defmodule DCATR.ServiceDataTest do
       assert RDF.graph([{EX.ServiceData1, DCATR.serviceManifestGraph(), manifest_graph_id}])
              |> ServiceData.load(EX.ServiceData1, depth: 99) ==
                {:ok,
-                ServiceData.build!(EX.ServiceData1,
+                ServiceData.new!(EX.ServiceData1,
                   manifest_graph: service_manifest_graph(id: manifest_graph_id)
                 )}
     end
@@ -151,7 +151,7 @@ defmodule DCATR.ServiceDataTest do
     assert ServiceData.resolve_graph_selector(service_data, :service_manifest) ==
              service_data.manifest_graph
 
-    assert ServiceData.resolve_graph_selector(service_data, :unknown_selector) == nil
+    assert ServiceData.resolve_graph_selector(service_data, :unknown_selector) == :undefined
   end
 
   describe "graphs/2" do

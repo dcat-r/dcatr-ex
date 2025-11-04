@@ -2,7 +2,7 @@ defmodule DCATR.Service.Type do
   @moduledoc """
   Behaviour for service types that provide operations for repository access and processing.
   """
-  alias DCATR.{Service, Repository, ServiceData}
+  alias DCATR.{Service, Repository, ServiceData, DuplicateGraphNameError}
 
   @type t :: module()
   @type schema :: Grax.Schema.t()
@@ -66,6 +66,18 @@ defmodule DCATR.Service.Type do
   Override to customize default graph selection.
   """
   @callback default_graph(service :: schema()) :: DCATR.Graph.t() | nil
+
+  @doc """
+  Returns the effective value of `use_primary_as_default` for this service.
+
+  Resolves the three-value semantics:
+
+  - When set in manifest: returns the manifest value (`true`, `false`, or `nil`)
+  - When not set in manifest: returns application config value (defaults to `nil`)
+
+  Override to customize the resolution logic (e.g., different configuration source).
+  """
+  @callback use_primary_as_default(service :: schema()) :: boolean() | nil
 
   @doc """
   Loads graph name mappings from a service manifest graph.
@@ -184,6 +196,17 @@ defmodule DCATR.Service.Type do
       end
 
       @doc """
+      Returns the effective value of `use_primary_as_default` for this service.
+
+      This implementation of `c:DCATR.Service.Type.use_primary_as_default/1` delegates to
+      `DCATR.Service.Type.use_primary_as_default/1`.
+      """
+      @impl true
+      def use_primary_as_default(service) do
+        DCATR.Service.Type.use_primary_as_default(service)
+      end
+
+      @doc """
       Returns the complete local name to graph ID mapping.
 
       Delegates to `DCATR.Service.Type.graph_name_mapping/1`.
@@ -215,6 +238,7 @@ defmodule DCATR.Service.Type do
                      graph_by_id: 2,
                      resolve_graph_selector: 2,
                      default_graph: 1,
+                     use_primary_as_default: 1,
                      graph_name_mapping: 1
     end
   end
@@ -255,11 +279,15 @@ defmodule DCATR.Service.Type do
 
   Extracts `dcatr:localGraphName` statements and `dcatr:DefaultGraph` type assertions
   from the given graph, populating `graph_names` and `graph_names_by_id` maps of `DCATR.Service`.
+
+  After extracting explicit graph name mappings, applies automatic primary-as-default designation
+  based on the service's `use_primary_as_default` setting.
   """
   @spec load_graph_names(schema(), RDF.Graph.t()) :: {:ok, schema()} | {:error, any()}
   def load_graph_names(service, graph) do
     with {:ok, service} <- extract_name_mappings(service, graph),
-         {:ok, service} <- extract_default_graph(service, graph) do
+         {:ok, service} <- extract_default_graph(service, graph),
+         {:ok, service} <- apply_primary_as_default(service) do
       {:ok, service}
     end
   end
@@ -285,8 +313,65 @@ defmodule DCATR.Service.Type do
         add_graph_name(service, :default, default_graph_id)
 
       multiple ->
-        graph_ids = Enum.map(multiple, fn %{default_graph: id} -> id end)
-        {:error, %DCATR.DuplicateGraphNameError{name: :default, graph_ids: graph_ids}}
+        graphs = Enum.map(multiple, fn %{default_graph: id} -> id end)
+
+        {:error,
+         %DuplicateGraphNameError{name: :default, graphs: graphs, reason: :explicit_duplicates}}
+    end
+  end
+
+  defp apply_primary_as_default(%service_type{repository: repository} = service) do
+    use_primary_as_default = service_type.use_primary_as_default(service)
+    primary_graph_id = repository.primary_graph && repository.primary_graph.__id__
+    primary_name = primary_graph_id && Map.get(service.graph_names_by_id, primary_graph_id)
+    explicit_default_id = Map.get(service.graph_names, :default)
+
+    case {use_primary_as_default, primary_graph_id, primary_name, explicit_default_id} do
+      # No primary graph - nothing to do
+      {_, nil, _, _} ->
+        {:ok, service}
+
+      # false (disable) mode - no automatic designation
+      {false, _, _, _} ->
+        {:ok, service}
+
+      # Primary already designated as :default - nothing to do
+      {_, _, :default, _} ->
+        {:ok, service}
+
+      # nil (auto) mode: primary has explicit local name - don't override with :default
+      {nil, _primary_id, name, _default_id} when not is_nil(name) ->
+        {:ok, service}
+
+      # nil (auto) mode: primary has no name, but explicit default exists - explicit takes precedence
+      {nil, _primary_id, nil, default_id} when not is_nil(default_id) ->
+        {:ok, service}
+
+      # nil (auto) mode: primary has no name, no explicit default - designate as default
+      {nil, primary_id, nil, nil} ->
+        add_graph_name(service, :default, primary_id)
+
+      # true (enforce) mode: primary has non-default name - error
+      {true, primary_id, name, _} when not is_nil(name) and name != :default ->
+        {:error,
+         %DuplicateGraphNameError{
+           name: :default,
+           graphs: [primary_id, name],
+           reason: :use_primary_as_default_enforced
+         }}
+
+      # true (enforce) mode: primary has no name, explicit default differs - error
+      {true, primary_id, nil, default_id} when not is_nil(default_id) and default_id != primary_id ->
+        {:error,
+         %DuplicateGraphNameError{
+           name: :default,
+           graphs: [primary_id, default_id],
+           reason: :use_primary_as_default_enforced
+         }}
+
+      # true (enforce) mode: primary has no name, no conflicting default - designate as default
+      {true, primary_id, nil, _} ->
+        add_graph_name(service, :default, primary_id)
     end
   end
 
@@ -353,15 +438,20 @@ defmodule DCATR.Service.Type do
   end
 
   def graph_name(%service_type{} = service, ns_term_or_selector, opts) do
-    cond do
-      graph = service_type.resolve_graph_selector(service, ns_term_or_selector) ->
-        service_type.graph_name(service, graph.__id__, opts)
+    case service_type.resolve_graph_selector(service, ns_term_or_selector) do
+      :undefined ->
+        if graph_id = RDF.coerce_graph_name(ns_term_or_selector) do
+          service_type.graph_name(service, graph_id, opts)
+        else
+          nil
+        end
 
-      graph_id = RDF.coerce_graph_name(ns_term_or_selector) ->
-        service_type.graph_name(service, graph_id, opts)
-
-      true ->
+      # Known selector but graph not available
+      nil ->
         nil
+
+      graph ->
+        service_type.graph_name(service, graph.__id__, opts)
     end
   end
 
@@ -370,7 +460,8 @@ defmodule DCATR.Service.Type do
 
   Delegates selector resolution to Repository and ServiceData catalogs.
   """
-  @spec resolve_graph_selector(schema(), Catalog.selector()) :: DCATR.Graph.t() | nil
+  @spec resolve_graph_selector(schema(), Catalog.selector()) ::
+          DCATR.Graph.t() | nil | :undefined
   def resolve_graph_selector(
         %{
           repository: %repository_type{} = repository,
@@ -378,8 +469,10 @@ defmodule DCATR.Service.Type do
         },
         selector
       ) do
-    repository_type.resolve_graph_selector(repository, selector) ||
-      service_data_type.resolve_graph_selector(local_data, selector)
+    case repository_type.resolve_graph_selector(repository, selector) do
+      :undefined -> service_data_type.resolve_graph_selector(local_data, selector)
+      result -> result
+    end
   end
 
   @doc """
@@ -390,9 +483,14 @@ defmodule DCATR.Service.Type do
   """
   @spec graph(schema(), Catalog.id_or_selector()) :: DCATR.Graph.t() | nil
   def graph(%service_type{} = service, name_or_selector_or_id) do
-    service_type.resolve_graph_selector(service, name_or_selector_or_id) ||
-      service_type.graph_by_name(service, name_or_selector_or_id) ||
-      service_type.graph_by_id(service, name_or_selector_or_id)
+    case service_type.resolve_graph_selector(service, name_or_selector_or_id) do
+      :undefined ->
+        service_type.graph_by_name(service, name_or_selector_or_id) ||
+          service_type.graph_by_id(service, name_or_selector_or_id)
+
+      result ->
+        result
+    end
   end
 
   @doc """
@@ -458,6 +556,24 @@ defmodule DCATR.Service.Type do
   def default_graph(%service_type{} = service) do
     service_type.graph_by_name(service, :default)
   end
+
+  @doc """
+  Default implementation of `c:use_primary_as_default/1`.
+
+  Resolves the three-value semantics:
+
+  - When set in manifest: returns the manifest value (`true`, `false`, or `nil`)
+  - When not set in manifest: returns application config value (defaults to `nil`), which can
+    be configured like this
+
+      config :dcatr, :use_primary_as_default, true # Enforce mode
+  """
+  @spec use_primary_as_default(schema()) :: boolean() | nil
+  def use_primary_as_default(%{use_primary_as_default: nil}) do
+    Application.get_env(:dcatr, :use_primary_as_default, nil)
+  end
+
+  def use_primary_as_default(%{use_primary_as_default: value}), do: value
 
   @doc """
   Default implementation for `graph_name_mapping/1`.

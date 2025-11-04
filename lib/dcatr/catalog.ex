@@ -31,9 +31,16 @@ defmodule DCATR.Catalog do
 
   It is usually used by `c:graph/2` implementation during the first resolution stage (before ID lookup).
 
-  Implementations should only handle their own selectors and return `nil` for unknown ones.
+  ## Return values
+
+  - `%DCATR.Graph{}` - Selector resolved successfully to a graph
+  - `nil` - Selector is recognized but references no graph (e.g., `:primary` when no primary graph is defined)
+  - `:undefined` - Selector is not recognized by this implementation (enables delegation in catalog hierarchies)
+
+  Implementations should only handle their own selectors and return `:undefined` for unknown ones.
   """
-  @callback resolve_graph_selector(catalog :: schema(), selector()) :: DCATR.Graph.t() | nil
+  @callback resolve_graph_selector(catalog :: schema(), selector()) ::
+              DCATR.Graph.t() | nil | :undefined
 
   @doc """
   Returns a graph by ID or symbolic selector.

@@ -110,13 +110,13 @@ defmodule DCATR.ServiceData.Type do
 
   - `:service_manifest` - Service manifest graph
   """
-  @spec resolve_graph_selector(schema(), Catalog.selector()) :: Graph.t() | nil
+  @spec resolve_graph_selector(schema(), Catalog.selector()) :: Graph.t() | nil | :undefined
   def resolve_graph_selector(service_data, selector)
 
   def resolve_graph_selector(%_{manifest_graph: manifest_graph}, :service_manifest),
     do: manifest_graph
 
-  def resolve_graph_selector(_service_data, _selector), do: nil
+  def resolve_graph_selector(_service_data, _selector), do: :undefined
 
   @doc """
   Default implementation of `c:DCATR.Catalog.graph/2`.
@@ -126,8 +126,10 @@ defmodule DCATR.ServiceData.Type do
   """
   @spec graph(schema(), Catalog.id_or_selector()) :: Graph.t() | nil
   def graph(%service_data_type{} = service_data, id_or_selector) do
-    service_data_type.resolve_graph_selector(service_data, id_or_selector) ||
-      find_graph_by_id(service_data, RDF.coerce_graph_name(id_or_selector))
+    case service_data_type.resolve_graph_selector(service_data, id_or_selector) do
+      :undefined -> find_graph_by_id(service_data, RDF.coerce_graph_name(id_or_selector))
+      result -> result
+    end
   end
 
   defp find_graph_by_id(%_{manifest_graph: %{__id__: id} = graph}, id), do: graph

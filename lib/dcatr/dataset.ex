@@ -35,9 +35,19 @@ defmodule DCATR.Dataset do
   use DCATR.Catalog
   use Grax.Schema
 
+  import DCATR.Utils, only: [bang!: 2]
+
   schema DCATR.Dataset do
     link graphs: DCATR.dataGraph(), type: list_of(DCATR.DataGraph), depth: +1
   end
+
+  def new(id, opts \\ []) do
+    with {:ok, struct} <- build(id, opts) do
+      Grax.validate(struct)
+    end
+  end
+
+  def new!(id, opts \\ []), do: bang!(&new/2, [id, opts])
 
   @doc """
   Returns a `DCATR.DataGraph` by id.
@@ -58,6 +68,6 @@ defmodule DCATR.Dataset do
 
   @doc false
   @impl true
-  @spec resolve_graph_selector(t(), DCATR.Catalog.selector()) :: nil
-  def resolve_graph_selector(_dataset, _selector), do: nil
+  @spec resolve_graph_selector(t(), DCATR.Catalog.selector()) :: :undefined
+  def resolve_graph_selector(_dataset, _selector), do: :undefined
 end

@@ -12,14 +12,44 @@ defmodule DCATR.DuplicateGraphNameError do
   @moduledoc """
   Raised when multiple graphs have the same local name or when multiple default graphs are designated.
   """
-  defexception [:name, :graph_ids]
+  defexception [:name, :graphs, :reason, :context]
 
-  def message(%{name: :default, graph_ids: ids}) when is_list(ids) do
-    "Multiple default graphs designated: #{Enum.map_join(ids, ", ", &to_string/1)}"
+  @impl true
+  def message(%{
+        name: :default,
+        graphs: [primary, explicit],
+        reason: :use_primary_as_default_enforced
+      }) do
+    """
+    Default graph conflict: usePrimaryAsDefault is enforced (true), but default graph differs from primary graph.
+
+    Expected: #{inspect(primary)} (primary graph)
+    Actual:   #{inspect(explicit)} (designated as default)
+
+    Solutions:
+    - Remove usePrimaryAsDefault to fall back to auto mode
+    - Set usePrimaryAsDefault: false (disable enforcement)
+    - Remove explicit default designation to use primary graph
+    """
   end
 
-  def message(%{name: name, graph_ids: ids}) when is_list(ids) do
-    "Duplicate graph name '#{name}' for graphs: #{Enum.map_join(ids, ", ", &to_string/1)}"
+  def message(%{name: :default, graphs: ids, reason: :explicit_duplicates}) when is_list(ids) do
+    """
+    Multiple graphs designated as default: #{inspect(ids)}
+
+    Solutions:
+    - Remove dcatr:DefaultGraph type from all but one graph
+    - Use usePrimaryAsDefault to automatically designate primary graph as default
+    """
+  end
+
+  def message(%{name: name, graphs: ids}) when is_list(ids) do
+    """
+    Duplicate graph name: #{inspect(name)} is assigned to multiple graphs: #{inspect(ids)}
+
+    Solutions:
+    - Ensure each dcatr:localGraphName is unique within the service
+    """
   end
 
   def message(%{name: :default}), do: "Multiple default graphs designated"

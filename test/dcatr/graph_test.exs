@@ -19,92 +19,92 @@ defmodule DCATR.GraphTest do
   }
 
   describe "DCATR.Graph" do
-    test "build/1" do
-      assert Graph.build(EX.Graph1) == {:ok, %Graph{__id__: RDF.iri(EX.Graph1)}}
+    test "new/1" do
+      assert Graph.new(EX.Graph1) == {:ok, %Graph{__id__: RDF.iri(EX.Graph1)}}
     end
 
     test "load/2" do
       assert RDF.graph({EX.Graph1, RDF.type(), DCATR.Graph})
-             |> Graph.load(EX.Graph1) == {:ok, Graph.build!(EX.Graph1)}
+             |> Graph.load(EX.Graph1) == {:ok, Graph.new!(EX.Graph1)}
     end
   end
 
   describe "DCATR.DataGraph" do
-    test "build/1" do
-      assert DataGraph.build(EX.DataGraph) == {:ok, %DataGraph{__id__: RDF.iri(EX.DataGraph)}}
+    test "new/1" do
+      assert DataGraph.new(EX.DataGraph) == {:ok, %DataGraph{__id__: RDF.iri(EX.DataGraph)}}
     end
 
     test "load/2" do
       assert RDF.graph({EX.DataGraph, RDF.type(), DCATR.DataGraph})
-             |> DataGraph.load(EX.DataGraph) == {:ok, DataGraph.build!(EX.DataGraph)}
+             |> DataGraph.load(EX.DataGraph) == {:ok, DataGraph.new!(EX.DataGraph)}
     end
   end
 
   describe "DCATR.ManifestGraph" do
-    test "build/1" do
-      assert ManifestGraph.build(EX.ManifestGraph) ==
+    test "new/1" do
+      assert ManifestGraph.new(EX.ManifestGraph) ==
                {:ok, %ManifestGraph{__id__: RDF.iri(EX.ManifestGraph)}}
     end
 
     test "load/2" do
       assert RDF.graph({EX.ManifestGraph, RDF.type(), DCATR.ManifestGraph})
              |> ManifestGraph.load(EX.ManifestGraph) ==
-               {:ok, ManifestGraph.build!(EX.ManifestGraph)}
+               {:ok, ManifestGraph.new!(EX.ManifestGraph)}
     end
   end
 
   describe "DCATR.RepositoryManifestGraph" do
-    test "build/1" do
-      assert RepositoryManifestGraph.build(EX.ManifestGraph) ==
+    test "new/1" do
+      assert RepositoryManifestGraph.new(EX.ManifestGraph) ==
                {:ok, %RepositoryManifestGraph{__id__: RDF.iri(EX.ManifestGraph)}}
     end
 
     test "load/2" do
       assert RDF.graph({EX.ManifestGraph, RDF.type(), DCATR.RepositoryManifestGraph})
              |> RepositoryManifestGraph.load(EX.ManifestGraph) ==
-               {:ok, RepositoryManifestGraph.build!(EX.ManifestGraph)}
+               {:ok, RepositoryManifestGraph.new!(EX.ManifestGraph)}
     end
   end
 
   describe "DCATR.ServiceManifestGraph" do
-    test "build/1" do
-      assert ServiceManifestGraph.build(EX.ServiceManifestGraph) ==
+    test "new/1" do
+      assert ServiceManifestGraph.new(EX.ServiceManifestGraph) ==
                {:ok, %ServiceManifestGraph{__id__: RDF.iri(EX.ServiceManifestGraph)}}
     end
 
     test "load/2" do
       assert RDF.graph({EX.ServiceManifestGraph, RDF.type(), DCATR.ServiceManifestGraph})
              |> ServiceManifestGraph.load(EX.ServiceManifestGraph) ==
-               {:ok, ServiceManifestGraph.build!(EX.ServiceManifestGraph)}
+               {:ok, ServiceManifestGraph.new!(EX.ServiceManifestGraph)}
     end
   end
 
   describe "DCATR.SystemGraph" do
-    test "build/1" do
-      assert SystemGraph.build(EX.SystemGraph) ==
+    test "new/1" do
+      assert SystemGraph.new(EX.SystemGraph) ==
                {:ok, %SystemGraph{__id__: RDF.iri(EX.SystemGraph)}}
     end
 
     test "load/2" do
       assert RDF.graph({EX.SystemGraph, RDF.type(), DCATR.SystemGraph})
-             |> SystemGraph.load(EX.SystemGraph) == {:ok, SystemGraph.build!(EX.SystemGraph)}
+             |> SystemGraph.load(EX.SystemGraph) == {:ok, SystemGraph.new!(EX.SystemGraph)}
     end
   end
 
   describe "DCATR.WorkingGraph" do
-    test "build/1" do
-      assert WorkingGraph.build(EX.WorkingGraph) ==
+    test "new/1" do
+      assert WorkingGraph.new(EX.WorkingGraph) ==
                {:ok, %WorkingGraph{__id__: RDF.iri(EX.WorkingGraph)}}
     end
 
     test "load/2" do
       assert RDF.graph({EX.WorkingGraph, RDF.type(), DCATR.WorkingGraph})
-             |> WorkingGraph.load(EX.WorkingGraph) == {:ok, WorkingGraph.build!(EX.WorkingGraph)}
+             |> WorkingGraph.load(EX.WorkingGraph) == {:ok, WorkingGraph.new!(EX.WorkingGraph)}
     end
   end
 
   test "Grax.to_rdf/1" do
-    graph = Graph.build!(EX.Graph)
+    graph = Graph.new!(EX.Graph)
     assert Grax.to_rdf(graph) == {:ok, RDF.graph({graph.__id__, RDF.type(), DCATR.Graph})}
 
     data_graph = example_data_graph()

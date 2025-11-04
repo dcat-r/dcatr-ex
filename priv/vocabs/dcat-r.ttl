@@ -36,6 +36,22 @@ dcatr:Service a rdfs:Class, owl:Class
             ; rdfs:comment "Links a service to its local data catalog (usually a blank node) containing service-specific graphs not distributed with the repository."
     .
 
+    dcatr:usePrimaryAsDefault a rdf:Property, owl:DatatypeProperty
+            ; rdfs:domain dcatr:Service
+            ; rdfs:range  xsd:boolean
+            ; rdfs:label "use primary as default"
+            ; rdfs:comment """Controls whether the repository's primary graph should automatically be designated as the service's default graph.
+
+Three-value semantics:
+- Absence: Auto mode - convention-based fallback. If no explicit default graph is configured in the service manifest, the primary graph becomes the default. If an explicit default is configured, it takes precedence.
+- true: Enforce mode - the primary graph MUST be the default. Raises an error if an explicit default graph differs from the primary graph.
+- false: Disable mode - no automatic designation. The service must explicitly configure a default graph, or none will be set.
+
+This property enables flexible configuration: most single-graph repositories benefit from automatic designation, while edge cases requiring explicit control can disable it (false mode) or enforce consistency (true mode)."""
+            ; skos:scopeNote "When not set in the manifest, the runtime behavior is determined by the application."
+    .
+
+
 
 ##########################################################################
 # Repository
@@ -56,6 +72,17 @@ dcatr:Repository a rdfs:Class, owl:Class
             ; rdfs:comment "Links a repository to its primary dataset."
     .
 
+    dcatr:repositoryPrimaryGraph a rdf:Property, owl:ObjectProperty, owl:FunctionalProperty
+            ; rdfs:subPropertyOf dcat:dataset
+            ; rdfs:domain dcatr:Repository
+            ; rdfs:range  dcatr:DataGraph
+            ; rdfs:label "repository primary graph"
+            ; rdfs:comment """Links repository to its primary graph.
+    
+Single-graph repositories: The only graph (shortcut, no dataset needed).
+Multi-graph repositories: Designates the primary graph (must also be listed in repositoryDataset/dataGraph)."""
+    .
+    
     dcatr:repositorySystemGraph a rdf:Property, owl:ObjectProperty
             ; rdfs:subPropertyOf dcat:dataset
             ; rdfs:domain dcatr:Repository

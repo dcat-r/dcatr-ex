@@ -5,11 +5,11 @@ defmodule DCATR.ServiceTest do
 
   alias DCATR.Service
 
-  test "build/1,2" do
+  test "new/1,2" do
     repository = repository()
     local_data = service_data()
 
-    assert Service.build(EX.Service1,
+    assert Service.new(EX.Service1,
              repository: repository,
              local_data: local_data
            ) ==
@@ -23,6 +23,64 @@ defmodule DCATR.ServiceTest do
               }}
   end
 
+  describe "use_primary_as_default/1" do
+    test "returns manifest value when set to true" do
+      {:ok, service} =
+        Service.new(EX.Service1,
+          repository: repository(),
+          local_data: service_data(),
+          use_primary_as_default: true
+        )
+
+      assert Service.use_primary_as_default(service) == true
+    end
+
+    test "returns manifest value when set to false" do
+      {:ok, service} =
+        Service.new(EX.Service1,
+          repository: repository(),
+          local_data: service_data(),
+          use_primary_as_default: false
+        )
+
+      assert Service.use_primary_as_default(service) == false
+    end
+
+    test "returns application config value when not set in manifest" do
+      with_application_env(:dcatr, :use_primary_as_default, true, fn ->
+        {:ok, service} =
+          Service.new(EX.Service1,
+            repository: repository(),
+            local_data: service_data()
+          )
+
+        assert Service.use_primary_as_default(service) == true
+      end)
+
+      with_application_env(:dcatr, :use_primary_as_default, false, fn ->
+        {:ok, service} =
+          Service.new(EX.Service1,
+            repository: repository(),
+            local_data: service_data()
+          )
+
+        assert Service.use_primary_as_default(service) == false
+      end)
+    end
+
+    test "returns nil when neither manifest nor config set" do
+      with_application_env(:dcatr, :use_primary_as_default, nil, fn ->
+        {:ok, service} =
+          Service.new(EX.Service1,
+            repository: repository(),
+            local_data: service_data()
+          )
+
+        assert Service.use_primary_as_default(service) == nil
+      end)
+    end
+  end
+
   describe "load/2" do
     test "minimal service" do
       assert RDF.graph([
@@ -34,7 +92,7 @@ defmodule DCATR.ServiceTest do
              ])
              |> Service.load(EX.Service1, depth: 99) ==
                {:ok,
-                Service.build!(EX.Service1,
+                Service.new!(EX.Service1,
                   repository:
                     repository(
                       id: EX.Repository1,
@@ -428,21 +486,53 @@ defmodule DCATR.ServiceTest do
     test "returns nil for non-existent graph", %{service: service} do
       assert Service.graph(service, EX.NonExistent) == nil
     end
+
+    test "returns primary graph via :primary selector" do
+      primary_graph = data_graph()
+      repo = single_graph_repository(primary_graph: primary_graph)
+      service = service(repository: repo, local_data: service_data())
+
+      assert Service.graph(service, :primary) == primary_graph
+    end
+
+    test "returns nil for :primary when repository has no primary_graph", %{service: service} do
+      assert Service.graph(service, :primary) == nil
+    end
   end
 
-  test "resolve_graph_selector/2" do
-    service = example_service()
+  describe "resolve_graph_selector/2" do
+    test "resolves service and repository manifest selectors" do
+      service = example_service()
 
-    assert Service.resolve_graph_selector(service, :service_manifest) ==
-             service.local_data.manifest_graph
+      assert Service.resolve_graph_selector(service, :service_manifest) ==
+               service.local_data.manifest_graph
 
-    assert Service.resolve_graph_selector(service, :repository_manifest) ==
-             service.repository.manifest_graph
+      assert Service.resolve_graph_selector(service, :repository_manifest) ==
+               service.repository.manifest_graph
 
-    assert Service.resolve_graph_selector(service, :repo_manifest) ==
-             service.repository.manifest_graph
+      assert Service.resolve_graph_selector(service, :repo_manifest) ==
+               service.repository.manifest_graph
+    end
 
-    assert Service.resolve_graph_selector(service, :unknown_selector) == nil
+    test "resolves :primary when repository has primary_graph" do
+      primary_graph = data_graph()
+      repo = single_graph_repository(primary_graph: primary_graph)
+      service = service(repository: repo, local_data: service_data())
+
+      assert Service.resolve_graph_selector(service, :primary) == primary_graph
+    end
+
+    test "returns nil for :primary when repository has no primary_graph" do
+      service = example_service()
+
+      assert Service.resolve_graph_selector(service, :primary) == nil
+    end
+
+    test "returns :undefined for unknown selectors" do
+      service = example_service()
+
+      assert Service.resolve_graph_selector(service, :unknown_selector) == :undefined
+    end
   end
 
   describe "graph_by_id/2" do
@@ -518,6 +608,20 @@ defmodule DCATR.ServiceTest do
 
     test "returns false for non-existent graph", %{service: service} do
       assert Service.has_graph?(service, EX.NonExistent) == false
+    end
+
+    test "returns true for :primary selector when repository has primary_graph" do
+      primary_graph = data_graph()
+      repo = single_graph_repository(primary_graph: primary_graph)
+      service = service(repository: repo, local_data: service_data())
+
+      assert Service.has_graph?(service, :primary) == true
+    end
+
+    test "returns false for :primary selector when repository has no primary_graph", %{
+      service: service
+    } do
+      assert Service.has_graph?(service, :primary) == false
     end
   end
 
@@ -707,6 +811,171 @@ defmodule DCATR.ServiceTest do
 
       assert Service.load_graph_names(service, manifest_rdf) ==
                {:error, %DCATR.GraphNotFoundError{graph_id: RDF.iri(EX.NonExistentGraph)}}
+    end
+  end
+
+  describe "load_graph_names/2 with use_primary_as_default" do
+    test "nil (auto) mode - primary becomes default when no explicit default" do
+      primary_graph = data_graph(id: EX.PrimaryGraph)
+      repo = single_graph_repository(primary_graph: primary_graph)
+      service = service(repository: repo, local_data: service_data(), use_primary_as_default: nil)
+
+      manifest_rdf = RDF.graph()
+
+      assert {:ok, loaded} = Service.load_graph_names(service, manifest_rdf)
+      assert loaded.graph_names[:default] == RDF.iri(EX.PrimaryGraph)
+      assert loaded.graph_names_by_id[RDF.iri(EX.PrimaryGraph)] == :default
+      assert Service.default_graph(loaded) == primary_graph
+    end
+
+    test "nil (auto) mode - explicit default overrides primary (no error)" do
+      primary_graph = data_graph(id: EX.PrimaryGraph)
+      explicit_default = data_graph(id: EX.ExplicitDefault)
+
+      repo =
+        repository(
+          primary_graph: primary_graph,
+          dataset: dataset(graphs: [primary_graph, explicit_default])
+        )
+
+      service = service(repository: repo, local_data: service_data(), use_primary_as_default: nil)
+
+      manifest_rdf = RDF.graph({EX.ExplicitDefault, RDF.type(), DCATR.DefaultGraph})
+
+      assert {:ok, loaded} = Service.load_graph_names(service, manifest_rdf)
+      assert loaded.graph_names[:default] == RDF.iri(EX.ExplicitDefault)
+      assert loaded.graph_names_by_id[RDF.iri(EX.ExplicitDefault)] == :default
+      assert Service.default_graph(loaded) == explicit_default
+    end
+
+    test "nil (auto) mode - primary with explicit local name does NOT get :default" do
+      primary_graph = data_graph(id: EX.PrimaryGraph)
+      repo = single_graph_repository(primary_graph: primary_graph)
+      service = service(repository: repo, local_data: service_data(), use_primary_as_default: nil)
+
+      manifest_rdf = RDF.graph({EX.PrimaryGraph, DCATR.localGraphName(), EX.main()})
+
+      assert {:ok, loaded} = Service.load_graph_names(service, manifest_rdf)
+      assert loaded.graph_names[RDF.iri(EX.main())] == RDF.iri(EX.PrimaryGraph)
+      assert loaded.graph_names[:default] == nil
+      assert Service.default_graph(loaded) == nil
+    end
+
+    test "true (enforce) mode - primary becomes default" do
+      primary_graph = data_graph(id: EX.PrimaryGraph)
+      repo = single_graph_repository(primary_graph: primary_graph)
+
+      service =
+        service(repository: repo, local_data: service_data(), use_primary_as_default: true)
+
+      manifest_rdf = RDF.graph()
+
+      assert {:ok, loaded} = Service.load_graph_names(service, manifest_rdf)
+      assert loaded.graph_names[:default] == RDF.iri(EX.PrimaryGraph)
+      assert Service.default_graph(loaded) == primary_graph
+    end
+
+    test "true (enforce) mode - error when primary has non-default local name" do
+      primary_graph = data_graph(id: EX.PrimaryGraph)
+      repo = single_graph_repository(primary_graph: primary_graph)
+
+      service =
+        service(repository: repo, local_data: service_data(), use_primary_as_default: true)
+
+      manifest_rdf = RDF.graph({EX.PrimaryGraph, DCATR.localGraphName(), EX.main()})
+
+      assert Service.load_graph_names(service, manifest_rdf) ==
+               {:error,
+                %DCATR.DuplicateGraphNameError{
+                  name: :default,
+                  graphs: [RDF.iri(EX.PrimaryGraph), EX.main()],
+                  reason: :use_primary_as_default_enforced
+                }}
+    end
+
+    test "true (enforce) mode - error when explicit default differs from primary" do
+      primary_graph = data_graph(id: EX.PrimaryGraph)
+      other_graph = data_graph(id: EX.OtherGraph)
+
+      repo =
+        repository(
+          primary_graph: primary_graph,
+          dataset: dataset(graphs: [primary_graph, other_graph])
+        )
+
+      service =
+        service(repository: repo, local_data: service_data(), use_primary_as_default: true)
+
+      manifest_rdf = RDF.graph({EX.OtherGraph, RDF.type(), DCATR.DefaultGraph})
+
+      assert Service.load_graph_names(service, manifest_rdf) ==
+               {:error,
+                %DCATR.DuplicateGraphNameError{
+                  name: :default,
+                  graphs: [RDF.iri(EX.PrimaryGraph), RDF.iri(EX.OtherGraph)],
+                  reason: :use_primary_as_default_enforced
+                }}
+    end
+
+    test "true (enforce) mode - success when explicit default matches primary" do
+      primary_graph = data_graph(id: EX.PrimaryGraph)
+      repo = single_graph_repository(primary_graph: primary_graph)
+
+      service =
+        service(repository: repo, local_data: service_data(), use_primary_as_default: true)
+
+      manifest_rdf = RDF.graph({EX.PrimaryGraph, RDF.type(), DCATR.DefaultGraph})
+
+      assert {:ok, loaded} = Service.load_graph_names(service, manifest_rdf)
+      assert loaded.graph_names[:default] == RDF.iri(EX.PrimaryGraph)
+      assert Service.default_graph(loaded) == primary_graph
+    end
+
+    test "false (disable) mode - no automatic designation (default_graph remains nil)" do
+      primary_graph = data_graph(id: EX.PrimaryGraph)
+      repo = single_graph_repository(primary_graph: primary_graph)
+
+      service =
+        service(repository: repo, local_data: service_data(), use_primary_as_default: false)
+
+      manifest_rdf = RDF.graph()
+
+      assert {:ok, loaded} = Service.load_graph_names(service, manifest_rdf)
+      assert loaded.graph_names[:default] == nil
+      assert Service.default_graph(loaded) == nil
+    end
+
+    test "no primary graph - all modes do nothing" do
+      repo = repository(dataset: dataset(graphs: [data_graph(id: EX.SomeGraph)]))
+
+      for mode <- [nil, true, false] do
+        service =
+          service(repository: repo, local_data: service_data(), use_primary_as_default: mode)
+
+        manifest_rdf = RDF.graph()
+
+        assert {:ok, loaded} = Service.load_graph_names(service, manifest_rdf)
+        assert loaded.graph_names[:default] == nil
+        assert Service.default_graph(loaded) == nil
+      end
+    end
+
+    test "application config fallback when not set in manifest" do
+      primary_graph = data_graph(id: EX.PrimaryGraph)
+      repo = single_graph_repository(primary_graph: primary_graph)
+      service = service(repository: repo, local_data: service_data())
+
+      manifest_rdf = RDF.graph()
+
+      with_application_env(:dcatr, :use_primary_as_default, nil, fn ->
+        assert {:ok, loaded} = Service.load_graph_names(service, manifest_rdf)
+        assert loaded.graph_names[:default] == RDF.iri(EX.PrimaryGraph)
+      end)
+
+      with_application_env(:dcatr, :use_primary_as_default, false, fn ->
+        assert {:ok, loaded} = Service.load_graph_names(service, manifest_rdf)
+        assert loaded.graph_names[:default] == nil
+      end)
     end
   end
 end

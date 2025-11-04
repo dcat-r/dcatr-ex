@@ -1,0 +1,54 @@
+@prefix dcatr: <https://w3id.org/dcat-r#> .
+@prefix dcat:  <http://www.w3.org/ns/dcat#> .
+@prefix ex:    <http://example.org/> .
+
+# Scenario 1: Single-Graph Repository (no local name)
+# ========================================================
+# This example demonstrates the simplest DCAT-R use case:
+# - A repository with only one graph (repositoryPrimaryGraph)
+# - No dataset wrapper (dataset property is nil)
+# - No local naming (graphs accessed by global URI only)
+
+################################################################################
+# MANIFEST GRAPHS (Configuration/Metadata)
+################################################################################
+
+# Service Manifest Graph (local configuration)
+_:service-manifest {
+    ex:myService a dcatr:Service ;
+        dcatr:serviceRepository ex:myRepository .
+
+    # No localGraphName statements - graph is accessed by its global URI
+    # Auto-designation: When usePrimaryAsDefault is undefined (not specified) and
+    # the primary graph has no other local name, it automatically becomes the default graph
+}
+
+# Repository Manifest Graph
+_:repository-manifest {
+    ex:myRepository a dcatr:Repository ;
+        dcatr:repositoryPrimaryGraph ex:main-graph ;
+        dcatr:repositoryManifestGraph ex:repository-manifest .
+
+    # NOTE: No repositoryDataset property - this is single-graph mode
+
+    ex:repository-manifest a dcatr:RepositoryManifestGraph ;
+        dcat:title "Repository Metadata" .
+
+    # The primary (and only) data graph
+    ex:main-graph a dcatr:DataGraph ;
+        dcat:title "Main Knowledge Graph" ;
+        dcat:description "The primary knowledge graph containing all domain data" .
+}
+
+################################################################################
+# USER DATA GRAPHS (Illustrative Examples)
+################################################################################
+
+# The actual data graph (in default graph)
+{
+    # Domain data would be here
+    # Example:
+    # ex:concept-001 a ex:Concept ;
+    #     ex:prefLabel "Important Concept" ;
+    #     ex:definition "A key concept in the domain ontology" .
+}

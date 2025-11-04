@@ -1,0 +1,60 @@
+@prefix dcatr: <https://w3id.org/dcat-r#> .
+@prefix dcat:  <http://www.w3.org/ns/dcat#> .
+@prefix ex:    <http://example.org/> .
+@prefix local: <http://localhost/graphs/> .
+
+# Scenario 2: Single-Graph Repository (with local name)
+# =======================================================
+# This example demonstrates single-graph mode with local naming:
+# - A repository with only one graph (repositoryPrimaryGraph)
+# - No dataset wrapper (dataset property is nil)
+# - Local naming configured (localGraphName in ServiceManifestGraph)
+#
+# This shows how a single graph can have a service-specific alias
+# while maintaining its canonical global URI in the repository.
+
+################################################################################
+# MANIFEST GRAPHS (Configuration/Metadata)
+################################################################################
+
+# Service Manifest Graph (local configuration)
+_:service-manifest {
+    ex:myService a dcatr:Service ;
+        dcatr:serviceRepository ex:myRepository .
+
+    # Local name mapping - service accesses graph via local alias
+    ex:main-graph dcatr:localGraphName local:main .
+
+    # NOTE: Primary has explicit local name 'local:main', so auto-designation does NOT apply.
+    # To make this the default, remove the local name to enable auto-designation.
+}
+
+# Repository Manifest Graph
+_:repository-manifest {
+    ex:myRepository a dcatr:Repository ;
+        dcatr:repositoryPrimaryGraph ex:main-graph ;
+        dcatr:repositoryManifestGraph ex:repository-manifest .
+
+    # NOTE: No repositoryDataset property - this is single-graph mode
+
+    ex:repository-manifest a dcatr:RepositoryManifestGraph ;
+        dcat:title "Repository Metadata" .
+
+    # The primary (and only) data graph
+    ex:main-graph a dcatr:DataGraph ;
+        dcat:title "Main Knowledge Graph" ;
+        dcat:description "The primary knowledge graph containing all domain data" .
+}
+
+################################################################################
+# USER DATA GRAPHS (Illustrative Examples)
+################################################################################
+
+# The actual data graph (physically named with local name)
+local:main {
+    # Domain data would be here
+    # Example:
+    # ex:concept-001 a ex:Concept ;
+    #     ex:prefLabel "Important Concept" ;
+    #     ex:definition "A key concept in the domain ontology" .
+}

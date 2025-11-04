@@ -82,10 +82,13 @@ defmodule DCATR.Repository.Type do
 
   Supported selectors:
 
+  - `:primary` - Primary graph (when present)
   - `:repository_manifest`, `:repo_manifest` - Repository manifest graph
   """
-  @spec resolve_graph_selector(schema(), Catalog.selector()) :: Graph.t() | nil
+  @spec resolve_graph_selector(schema(), Catalog.selector()) :: Graph.t() | nil | :undefined
   def resolve_graph_selector(repository, selector)
+
+  def resolve_graph_selector(%_{primary_graph: primary_graph}, :primary), do: primary_graph
 
   def resolve_graph_selector(%_{manifest_graph: manifest_graph}, :repository_manifest),
     do: manifest_graph
@@ -97,6 +100,8 @@ defmodule DCATR.Repository.Type do
     dataset_type.resolve_graph_selector(dataset, selector)
   end
 
+  def resolve_graph_selector(_repository, _selector), do: :undefined
+
   @doc """
   Default implementation of `c:DCATR.Catalog.graph/2`.
 
@@ -105,11 +110,19 @@ defmodule DCATR.Repository.Type do
   """
   @spec graph(schema(), Catalog.id_or_selector()) :: Graph.t() | nil
   def graph(%repository_type{} = repository, id_or_selector) do
-    repository_type.resolve_graph_selector(repository, id_or_selector) ||
-      find_graph_by_id(repository, RDF.coerce_graph_name(id_or_selector))
+    case repository_type.resolve_graph_selector(repository, id_or_selector) do
+      :undefined -> find_graph_by_id(repository, RDF.coerce_graph_name(id_or_selector))
+      result -> result
+    end
   end
 
   defp find_graph_by_id(%_{manifest_graph: %{__id__: id} = graph}, id), do: graph
+
+  defp find_graph_by_id(%_{primary_graph: %{__id__: id} = graph}, id), do: graph
+
+  defp find_graph_by_id(%_{dataset: nil, system_graphs: system_graphs}, id) do
+    Enum.find(system_graphs, &(&1.__id__ == id))
+  end
 
   defp find_graph_by_id(%_{dataset: dataset, system_graphs: system_graphs}, id) do
     Dataset.graph(dataset, id) || Enum.find(system_graphs, &(&1.__id__ == id))
@@ -128,12 +141,19 @@ defmodule DCATR.Repository.Type do
   def graphs(%_repository_type{} = repository, opts \\ []) do
     case Keyword.get(opts, :type) do
       nil -> collect_graphs(repository)
-      :data -> if repository.dataset, do: Dataset.graphs(repository.dataset), else: []
+      :data -> data_graphs(repository)
       :system -> repository.system_graphs
       :manifest -> List.wrap(repository.manifest_graph)
       types when is_list(types) -> Enum.flat_map(types, &graphs(repository, type: &1))
       _ -> []
     end
+  end
+
+  defp data_graphs(%_{dataset: dataset}) when not is_nil(dataset), do: Dataset.graphs(dataset)
+  defp data_graphs(%_{primary_graph: primary_graph}), do: List.wrap(primary_graph)
+
+  defp collect_graphs(%_{dataset: nil, primary_graph: primary_graph} = repository) do
+    [repository.manifest_graph, primary_graph | repository.system_graphs]
   end
 
   defp collect_graphs(repository) do

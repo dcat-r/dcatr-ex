@@ -56,6 +56,8 @@ defmodule DCATR.Service do
 
   use DCATR.Service.Type
 
+  import DCATR.Utils, only: [bang!: 2]
+
   alias DCATR.{Repository, ServiceData}
 
   schema DCATR.Service do
@@ -67,6 +69,8 @@ defmodule DCATR.Service do
 
     link local_data: DCATR.serviceLocalData(), type: ServiceData, required: true, depth: +1
 
+    property use_primary_as_default: DCATR.usePrimaryAsDefault(), type: :boolean
+
     field :graph_names, default: %{}
     field :graph_names_by_id, default: %{}
   end
@@ -74,4 +78,12 @@ defmodule DCATR.Service do
   @type graph_name :: :default | RDF.IRI.t() | RDF.BlankNode.t()
   @type graph_names :: %{graph_name() => RDF.IRI.t()}
   @type graph_names_by_id :: %{RDF.IRI.t() => graph_name()}
+
+  def new(id, opts \\ []) do
+    with {:ok, struct} <- build(id, opts) do
+      Grax.validate(struct)
+    end
+  end
+
+  def new!(id, opts \\ []), do: bang!(&new/2, [id, opts])
 end

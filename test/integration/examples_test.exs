@@ -5,8 +5,127 @@ defmodule DCATR.Integration.ExamplesTest do
 
   import RDF.Sigils
 
-  test "Scenario 2: Global Graph Names" do
-    example_opts = [load_path: "examples/scenario2-global-graph-names.trig"]
+  test "Scenario 1: Single-Graph Repository (no local name)" do
+    example_opts = [load_path: "examples/scenario1-single-graph-no-local-name.trig"]
+
+    assert %Service{__id__: ~I<http://example.org/myService>} =
+             service = Manifest.service!(example_opts)
+
+    assert %Repository{__id__: ~I<http://example.org/myRepository>} =
+             repository = Manifest.repository!(example_opts)
+
+    # Verify single-graph mode: primary_graph set, dataset is nil
+    assert %DataGraph{__id__: ~I<http://example.org/main-graph>} = repository.primary_graph
+    assert repository.dataset == nil
+
+    # Verify :primary selector works
+    assert %DataGraph{__id__: ~I<http://example.org/main-graph>} =
+             Repository.graph(repository, :primary)
+
+    # Verify access by ID works
+    assert %DataGraph{__id__: ~I<http://example.org/main-graph>} =
+             Repository.graph(repository, ~I<http://example.org/main-graph>)
+
+    # Verify :primary selector via Service
+    assert %DataGraph{__id__: ~I<http://example.org/main-graph>} =
+             Service.graph(service, :primary)
+
+    # Verify automatic primary-as-default designation (no explicit localGraphName statements)
+    assert Service.graph_name_mapping(service) == %{
+             :default => ~I<http://example.org/main-graph>
+           }
+
+    # Verify default graph (automatically designated from primary)
+    assert %DataGraph{__id__: ~I<http://example.org/main-graph>} =
+             Service.default_graph(service)
+  end
+
+  test "Scenario 2: Single-Graph Repository (with local name)" do
+    example_opts = [load_path: "examples/scenario2-single-graph-with-local-name.trig"]
+
+    assert %Service{__id__: ~I<http://example.org/myService>} =
+             service = Manifest.service!(example_opts)
+
+    assert %Repository{__id__: ~I<http://example.org/myRepository>} =
+             repository = Manifest.repository!(example_opts)
+
+    # Verify single-graph mode: primary_graph set, dataset is nil
+    assert %DataGraph{__id__: ~I<http://example.org/main-graph>} = repository.primary_graph
+    assert repository.dataset == nil
+
+    # Verify :primary selector works
+    assert %DataGraph{__id__: ~I<http://example.org/main-graph>} =
+             Service.graph(service, :primary)
+
+    # Verify local name mapping exists (NO automatic primary-as-default when explicit local name present)
+    assert Service.graph_name_mapping(service) == %{
+             ~I<http://localhost/graphs/main> => ~I<http://example.org/main-graph>
+           }
+
+    # Verify access by local name
+    assert %DataGraph{__id__: ~I<http://example.org/main-graph>} =
+             Service.graph_by_name(service, ~I<http://localhost/graphs/main>)
+
+    # Verify graph_name returns the explicit local name
+    assert Service.graph_name(service, repository.primary_graph) ==
+             ~I<http://localhost/graphs/main>
+
+    # Verify no default graph (primary has explicit local name, not auto-designated as :default)
+    assert Service.default_graph(service) == nil
+  end
+
+  test "Scenario 6: Multi-Graph with Primary Designation" do
+    example_opts = [load_path: "examples/scenario6-multi-graph-with-primary.trig"]
+
+    assert %Service{__id__: ~I<http://example.org/myService>} =
+             service = Manifest.service!(example_opts)
+
+    assert %Repository{__id__: ~I<http://example.org/myRepository>} =
+             repository = Manifest.repository!(example_opts)
+
+    assert %Dataset{__id__: ~I<http://example.org/myDataset>} =
+             dataset = Manifest.dataset!(example_opts)
+
+    # Verify dual-use mode: both primary_graph and dataset present
+    assert %DataGraph{__id__: ~I<http://example.org/main-graph>} = repository.primary_graph
+    assert repository.dataset != nil
+
+    # Verify primary graph is in dataset's graphs
+    graph_ids = dataset.graphs |> Enum.map(& &1.__id__)
+    assert ~I<http://example.org/main-graph> in graph_ids
+
+    # Verify :primary selector works
+    assert %DataGraph{__id__: ~I<http://example.org/main-graph>} =
+             Repository.graph(repository, :primary)
+
+    # Verify :primary selector via Service
+    assert %DataGraph{__id__: ~I<http://example.org/main-graph>} =
+             Service.graph(service, :primary)
+
+    # Verify Repository.graphs returns all graphs without duplicates (including manifest)
+    all_graphs = Repository.graphs(repository)
+    assert length(all_graphs) == 4
+    assert ~I<http://example.org/main-graph> in Enum.map(all_graphs, & &1.__id__)
+    assert ~I<http://example.org/aux-graph-1> in Enum.map(all_graphs, & &1.__id__)
+    assert ~I<http://example.org/aux-graph-2> in Enum.map(all_graphs, & &1.__id__)
+    assert ~I<http://example.org/repository-manifest> in Enum.map(all_graphs, & &1.__id__)
+
+    # Verify data graphs only (no duplicates)
+    data_graphs = Repository.graphs(repository, type: :data)
+    assert length(data_graphs) == 3
+    assert ~I<http://example.org/main-graph> in Enum.map(data_graphs, & &1.__id__)
+    assert ~I<http://example.org/aux-graph-1> in Enum.map(data_graphs, & &1.__id__)
+    assert ~I<http://example.org/aux-graph-2> in Enum.map(data_graphs, & &1.__id__)
+
+    # Verify no local name mappings (all graphs use global URIs)
+    assert Service.graph_name_mapping(service) == %{}
+
+    # Verify no default graph (usePrimaryAsDefault: false prevents auto-designation)
+    assert Service.default_graph(service) == nil
+  end
+
+  test "Scenario 3: Global Graph Names" do
+    example_opts = [load_path: "examples/scenario3-global-graph-names.trig"]
 
     assert %Service{__id__: ~I<http://example.org/myService>} =
              service = Manifest.service!(example_opts)
@@ -62,8 +181,8 @@ defmodule DCATR.Integration.ExamplesTest do
              manifest_graph
   end
 
-  test "Scenario 3: Local Graph Names" do
-    example_opts = [load_path: "examples/scenario3-local-graph-names.trig"]
+  test "Scenario 4: Local Graph Names" do
+    example_opts = [load_path: "examples/scenario4-local-graph-names.trig"]
 
     # Load via cached API
     service = Manifest.service!(example_opts)
@@ -150,8 +269,8 @@ defmodule DCATR.Integration.ExamplesTest do
              manifest_graph
   end
 
-  test "Scenario 4: Mixed Graph Names" do
-    example_opts = [load_path: "examples/scenario4-mixed-graph-names.trig"]
+  test "Scenario 5: Mixed Graph Names" do
+    example_opts = [load_path: "examples/scenario5-mixed-graph-names.trig"]
 
     assert %Service{__id__: ~I<http://example.org/myService>} =
              service = Manifest.service!(example_opts)

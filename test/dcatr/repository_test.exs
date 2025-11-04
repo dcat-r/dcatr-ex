@@ -5,16 +5,18 @@ defmodule DCATR.RepositoryTest do
 
   alias DCATR.Repository
 
-  describe "build/1,2" do
-    test "with required dataset" do
+  describe "new/1,2" do
+    test "with required fields" do
       dataset = dataset()
+      manifest_graph = repository_manifest_graph()
 
-      assert Repository.build(EX.Repository1, dataset: dataset) ==
+      assert Repository.new(EX.Repository1, dataset: dataset, manifest_graph: manifest_graph) ==
                {:ok,
                 %Repository{
                   __id__: RDF.iri(EX.Repository1),
                   dataset: dataset,
-                  manifest_graph: nil,
+                  primary_graph: nil,
+                  manifest_graph: manifest_graph,
                   system_graphs: []
                 }}
     end
@@ -25,7 +27,7 @@ defmodule DCATR.RepositoryTest do
       system_graph1 = system_graph()
       system_graph2 = system_graph()
 
-      assert Repository.build(EX.Repository1,
+      assert Repository.new(EX.Repository1,
                dataset: dataset,
                manifest_graph: manifest_graph,
                system_graphs: [system_graph1, system_graph2]
@@ -34,9 +36,77 @@ defmodule DCATR.RepositoryTest do
                 %Repository{
                   __id__: RDF.iri(EX.Repository1),
                   dataset: dataset,
+                  primary_graph: nil,
                   manifest_graph: manifest_graph,
                   system_graphs: [system_graph1, system_graph2]
                 }}
+    end
+
+    test "with primary_graph only (single-graph mode)" do
+      primary_graph = data_graph()
+      manifest_graph = repository_manifest_graph()
+
+      assert Repository.new(EX.Repository1,
+               primary_graph: primary_graph,
+               manifest_graph: manifest_graph
+             ) ==
+               {:ok,
+                %Repository{
+                  __id__: RDF.iri(EX.Repository1),
+                  dataset: nil,
+                  primary_graph: primary_graph,
+                  manifest_graph: manifest_graph,
+                  system_graphs: []
+                }}
+    end
+
+    test "with both dataset and primary_graph (multi-graph with primary)" do
+      dataset = dataset()
+      primary_graph = List.first(dataset.graphs)
+      manifest_graph = repository_manifest_graph()
+
+      assert Repository.new(EX.Repository1,
+               dataset: dataset,
+               primary_graph: primary_graph,
+               manifest_graph: manifest_graph
+             ) ==
+               {:ok,
+                %Repository{
+                  __id__: RDF.iri(EX.Repository1),
+                  dataset: dataset,
+                  primary_graph: primary_graph,
+                  manifest_graph: manifest_graph,
+                  system_graphs: []
+                }}
+    end
+
+    test "rejects primary_graph not in dataset when both present" do
+      dataset = dataset()
+      orphan_primary = data_graph()
+      manifest_graph = repository_manifest_graph()
+
+      assert {:error,
+              %Grax.ValidationError{
+                errors: [
+                  on_validate:
+                    "primary_graph must be one of the dataset's graphs when both are present"
+                ]
+              }} =
+               Repository.new(EX.Repository1,
+                 dataset: dataset,
+                 primary_graph: orphan_primary,
+                 manifest_graph: manifest_graph
+               )
+    end
+
+    test "requires at least one of dataset or primary_graph" do
+      manifest_graph = repository_manifest_graph()
+
+      assert {:error,
+              %Grax.ValidationError{
+                errors: [on_validate: "at least one of dataset or primary_graph required"]
+              }} =
+               Repository.new(EX.Repo, manifest_graph: manifest_graph)
     end
   end
 
@@ -48,7 +118,7 @@ defmodule DCATR.RepositoryTest do
              |> RDF.graph()
              |> Repository.load(EX.Repository1) ==
                {:ok,
-                Repository.build!(EX.Repository1,
+                Repository.new!(EX.Repository1,
                   dataset: dataset(id: EX.Dataset1),
                   manifest_graph: repository_manifest_graph(id: EX.RepositoryManifest)
                 )}
@@ -70,34 +140,116 @@ defmodule DCATR.RepositoryTest do
              ])
              |> Repository.load(EX.Repository1, depth: 99) == {:ok, example_repository()}
     end
+
+    test "repository with primary_graph only (single-graph mode)" do
+      graph =
+        RDF.graph([
+          {EX.PrimaryGraph, RDF.type(), DCATR.DataGraph},
+          {EX.RepositoryManifest, RDF.type(), DCATR.RepositoryManifestGraph},
+          {EX.SingleGraphRepo, RDF.type(), DCATR.Repository},
+          {EX.SingleGraphRepo, DCATR.repositoryPrimaryGraph(), EX.PrimaryGraph},
+          {EX.SingleGraphRepo, DCATR.repositoryManifestGraph(), EX.RepositoryManifest}
+        ])
+
+      assert Repository.load(graph, EX.SingleGraphRepo, depth: 1) ==
+               {:ok,
+                Repository.new!(EX.SingleGraphRepo,
+                  primary_graph: data_graph(id: EX.PrimaryGraph),
+                  manifest_graph: repository_manifest_graph(id: EX.RepositoryManifest)
+                )}
+    end
+
+    test "repository with both dataset and primary_graph (multi-graph with primary)" do
+      graph =
+        RDF.graph([
+          {EX.DataGraph1, RDF.type(), DCATR.DataGraph},
+          {EX.DataGraph2, RDF.type(), DCATR.DataGraph},
+          {EX.Dataset1, RDF.type(), DCATR.Dataset},
+          {EX.Dataset1, DCATR.dataGraph(), [EX.DataGraph1, EX.DataGraph2]},
+          {EX.RepositoryManifest, RDF.type(), DCATR.RepositoryManifestGraph},
+          {EX.MultiGraphRepo, RDF.type(), DCATR.Repository},
+          {EX.MultiGraphRepo, DCATR.repositoryDataset(), EX.Dataset1},
+          {EX.MultiGraphRepo, DCATR.repositoryPrimaryGraph(), EX.DataGraph1},
+          {EX.MultiGraphRepo, DCATR.repositoryManifestGraph(), EX.RepositoryManifest}
+        ])
+
+      {:ok, loaded_repo} = Repository.load(graph, EX.MultiGraphRepo, depth: 2)
+
+      assert loaded_repo.primary_graph.__id__ == RDF.iri(EX.DataGraph1)
+      assert loaded_repo.dataset.__id__ == RDF.iri(EX.Dataset1)
+      assert length(loaded_repo.dataset.graphs) == 2
+    end
   end
 
-  test "Grax.to_rdf/1" do
-    dataset = dataset()
-    manifest_graph = repository_manifest_graph()
-    system_graph = system_graph()
+  describe "Grax.to_rdf/1" do
+    test "repository with dataset" do
+      dataset = dataset()
+      manifest_graph = repository_manifest_graph()
+      system_graph = system_graph()
 
-    repo =
-      repository(
-        dataset: dataset,
-        manifest_graph: manifest_graph,
-        system_graphs: [system_graph]
-      )
+      repo =
+        repository(
+          dataset: dataset,
+          manifest_graph: manifest_graph,
+          system_graphs: [system_graph]
+        )
 
-    rdf = Grax.to_rdf!(repo)
+      rdf = Grax.to_rdf!(repo)
 
-    assert RDF.Graph.include?(rdf, {repo.__id__, RDF.type(), DCATR.Repository})
-    assert RDF.Graph.include?(rdf, {repo.__id__, DCATR.repositoryDataset(), dataset.__id__})
+      assert RDF.Graph.include?(rdf, {repo.__id__, RDF.type(), DCATR.Repository})
+      assert RDF.Graph.include?(rdf, {repo.__id__, DCATR.repositoryDataset(), dataset.__id__})
 
-    assert RDF.Graph.include?(
-             rdf,
-             {repo.__id__, DCATR.repositoryManifestGraph(), manifest_graph.__id__}
-           )
+      assert RDF.Graph.include?(
+               rdf,
+               {repo.__id__, DCATR.repositoryManifestGraph(), manifest_graph.__id__}
+             )
 
-    assert RDF.Graph.include?(
-             rdf,
-             {repo.__id__, DCATR.repositorySystemGraph(), system_graph.__id__}
-           )
+      assert RDF.Graph.include?(
+               rdf,
+               {repo.__id__, DCATR.repositorySystemGraph(), system_graph.__id__}
+             )
+    end
+
+    test "repository with primary_graph only (single-graph mode)" do
+      primary_graph = data_graph()
+
+      repo = single_graph_repository(id: EX.Repo, primary_graph: primary_graph)
+
+      rdf = Grax.to_rdf!(repo)
+
+      assert RDF.Graph.include?(rdf, {repo.__id__, RDF.type(), DCATR.Repository})
+
+      assert RDF.Graph.include?(
+               rdf,
+               {repo.__id__, DCATR.repositoryPrimaryGraph(), primary_graph.__id__}
+             )
+
+      refute RDF.Graph.include?(rdf, {repo.__id__, DCATR.repositoryDataset(), nil})
+    end
+
+    test "repository with both dataset and primary_graph (multi-graph with primary)" do
+      graph1 = data_graph()
+      graph2 = data_graph()
+      dataset = dataset(graphs: [graph1, graph2])
+      primary_graph = graph1
+
+      repo =
+        multi_graph_with_primary_repository(
+          id: EX.Repo,
+          dataset: dataset,
+          primary_graph: primary_graph
+        )
+
+      rdf = Grax.to_rdf!(repo)
+
+      assert RDF.Graph.include?(rdf, {repo.__id__, RDF.type(), DCATR.Repository})
+      assert RDF.Graph.include?(rdf, {repo.__id__, DCATR.repositoryDataset(), dataset.__id__})
+
+      assert RDF.Graph.include?(
+               rdf,
+               {repo.__id__, DCATR.repositoryPrimaryGraph(), primary_graph.__id__}
+             )
+    end
   end
 
   describe "graph/2" do
@@ -135,14 +287,77 @@ defmodule DCATR.RepositoryTest do
     test "returns nil for non-existent graph", %{repo: repo} do
       assert Repository.graph(repo, EX.NonExistent) == nil
     end
+
+    test "returns primary graph via :primary selector (single-graph mode)" do
+      primary_graph = data_graph()
+      repo = single_graph_repository(primary_graph: primary_graph)
+
+      assert Repository.graph(repo, :primary) == primary_graph
+    end
+
+    test "returns primary graph via :primary selector (multi-graph mode)" do
+      primary_graph = data_graph()
+      other_graph = data_graph()
+      ds = dataset(graphs: [primary_graph, other_graph])
+      repo = multi_graph_with_primary_repository(dataset: ds, primary_graph: primary_graph)
+
+      assert Repository.graph(repo, :primary) == primary_graph
+    end
+
+    test "returns nil for :primary when no primary_graph", %{repo: repo} do
+      assert Repository.graph(repo, :primary) == nil
+    end
+
+    test "returns primary graph by ID in single-graph mode" do
+      primary_graph = data_graph()
+      repo = single_graph_repository(primary_graph: primary_graph)
+
+      assert Repository.graph(repo, primary_graph.__id__) == primary_graph
+    end
+
+    test "returns nil for non-existent ID in single-graph mode" do
+      primary_graph = data_graph()
+      repo = single_graph_repository(primary_graph: primary_graph)
+
+      assert Repository.graph(repo, EX.NonExistent) == nil
+    end
+
+    test "returns primary graph by ID in dual-use mode" do
+      primary_graph = data_graph()
+
+      repo =
+        multi_graph_with_primary_repository(
+          dataset: dataset(graphs: [primary_graph, data_graph()]),
+          primary_graph: primary_graph
+        )
+
+      assert Repository.graph(repo, primary_graph.__id__) == primary_graph
+    end
   end
 
-  test "resolve_graph_selector/2" do
-    repo = example_repository()
+  describe "resolve_graph_selector/2" do
+    test "resolves :repository_manifest and :repo_manifest" do
+      repo = example_repository()
 
-    assert Repository.resolve_graph_selector(repo, :repository_manifest) == repo.manifest_graph
-    assert Repository.resolve_graph_selector(repo, :repo_manifest) == repo.manifest_graph
-    assert Repository.resolve_graph_selector(repo, :unknown_selector) == nil
+      assert Repository.resolve_graph_selector(repo, :repository_manifest) == repo.manifest_graph
+      assert Repository.resolve_graph_selector(repo, :repo_manifest) == repo.manifest_graph
+    end
+
+    test "resolves :primary when primary_graph is present" do
+      primary_graph = data_graph()
+      repo = single_graph_repository(primary_graph: primary_graph)
+
+      assert Repository.resolve_graph_selector(repo, :primary) == primary_graph
+    end
+
+    test "returns nil for :primary when primary_graph is nil" do
+      assert Repository.resolve_graph_selector(example_repository(), :primary) == nil
+    end
+
+    test "returns :undefined for unknown selectors" do
+      assert Repository.resolve_graph_selector(example_repository(), :unknown_selector) ==
+               :undefined
+    end
   end
 
   describe "graphs/2" do
@@ -217,6 +432,52 @@ defmodule DCATR.RepositoryTest do
     test "handles mixed valid and invalid types", %{repo: repo, repo_manifest: repo_manifest} do
       assert Repository.graphs(repo, type: [:manifest, :unknown]) == [repo_manifest]
     end
+
+    test "returns all graphs in single-graph mode" do
+      primary_graph = data_graph()
+      system_graph = system_graph()
+      repo = single_graph_repository(primary_graph: primary_graph, system_graphs: [system_graph])
+
+      graphs = Repository.graphs(repo)
+      assert length(graphs) == 3
+      assert repo.manifest_graph in graphs
+      assert primary_graph in graphs
+      assert system_graph in graphs
+    end
+
+    test "returns no duplicates in dual-use mode" do
+      primary_graph = data_graph()
+      other_graph = data_graph()
+      ds = dataset(graphs: [primary_graph, other_graph])
+      repo = multi_graph_with_primary_repository(dataset: ds, primary_graph: primary_graph)
+
+      graphs = Repository.graphs(repo)
+      assert length(graphs) == 3
+      assert repo.manifest_graph in graphs
+      assert primary_graph in graphs
+      assert other_graph in graphs
+      assert Enum.count(graphs, &(&1.__id__ == primary_graph.__id__)) == 1
+    end
+
+    test "filters by type :data in single-graph mode" do
+      primary_graph = data_graph()
+      repo = single_graph_repository(primary_graph: primary_graph)
+
+      assert Repository.graphs(repo, type: :data) == [primary_graph]
+    end
+
+    test "filters by type :data in dual-use mode without duplicates" do
+      primary_graph = data_graph()
+      other_graph = data_graph()
+      ds = dataset(graphs: [primary_graph, other_graph])
+      repo = multi_graph_with_primary_repository(dataset: ds, primary_graph: primary_graph)
+
+      data_graphs = Repository.graphs(repo, type: :data)
+      assert length(data_graphs) == 2
+      assert primary_graph in data_graphs
+      assert other_graph in data_graphs
+      assert Enum.count(data_graphs, &(&1.__id__ == primary_graph.__id__)) == 1
+    end
   end
 
   test "system_graphs/1" do
@@ -242,6 +503,17 @@ defmodule DCATR.RepositoryTest do
     test "returns true for existing graphs by selector", %{repo: repo} do
       assert Repository.has_graph?(repo, :repository_manifest) == true
       assert Repository.has_graph?(repo, :repo_manifest) == true
+    end
+
+    test "returns true for :primary selector when primary_graph present" do
+      primary_graph = data_graph()
+      repo = single_graph_repository(primary_graph: primary_graph)
+
+      assert Repository.has_graph?(repo, :primary) == true
+    end
+
+    test "returns false for :primary selector when no primary_graph", %{repo: repo} do
+      assert Repository.has_graph?(repo, :primary) == false
     end
 
     test "returns false for non-existent graphs", %{repo: repo} do

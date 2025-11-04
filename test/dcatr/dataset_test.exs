@@ -5,23 +5,23 @@ defmodule DCATR.DatasetTest do
 
   alias DCATR.Dataset
 
-  describe "build/1,2" do
+  describe "new/1,2" do
     test "without graphs" do
-      assert Dataset.build(EX.Dataset1) ==
+      assert Dataset.new(EX.Dataset1) ==
                {:ok, %Dataset{__id__: RDF.iri(EX.Dataset1), graphs: []}}
     end
 
     test "with data graphs" do
       graphs = example_data_graphs()
 
-      assert Dataset.build(EX.Dataset1, graphs: graphs) ==
+      assert Dataset.new(EX.Dataset1, graphs: graphs) ==
                {:ok, %Dataset{__id__: RDF.iri(EX.Dataset1), graphs: graphs}}
     end
   end
 
   describe "load/2" do
     test "minimal dataset" do
-      assert Dataset.load(RDF.graph(), EX.Dataset1) == {:ok, Dataset.build!(EX.Dataset1)}
+      assert Dataset.load(RDF.graph(), EX.Dataset1) == {:ok, Dataset.new!(EX.Dataset1)}
     end
 
     test "dataset with all properties" do
@@ -98,6 +98,18 @@ defmodule DCATR.DatasetTest do
 
     test "returns false for empty dataset" do
       assert Dataset.has_graph?(dataset(), EX.Any) == false
+    end
+  end
+
+  describe "resolve_graph_selector/2" do
+    setup :example_dataset_scenario
+
+    test "returns :undefined for any selector (Dataset supports no selectors)", %{
+      dataset: dataset
+    } do
+      assert Dataset.resolve_graph_selector(dataset, :any_selector) == :undefined
+      assert Dataset.resolve_graph_selector(dataset, :primary) == :undefined
+      assert Dataset.resolve_graph_selector(dataset, :repository_manifest) == :undefined
     end
   end
 end

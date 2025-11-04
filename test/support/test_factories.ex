@@ -2,7 +2,7 @@ defmodule DCATR.TestFactories do
   @moduledoc """
   Test factories for DCAT-R test suite.
 
-  These factories are convenience wrappers around the schema `build/2` functions,
+  These factories are convenience wrappers around the schema `new/2` functions,
   providing sensible defaults for required and commonly used fields. They delegate
   all complexity to the actual schema modules and simply make test setup more concise.
 
@@ -10,13 +10,13 @@ defmodule DCATR.TestFactories do
 
   ### Basic Factories
 
-  Basic factories wrap schema `build/2` functions with minimal defaults:
+  Basic factories wrap schema `new/2` functions with minimal defaults:
 
   - `data_graph/1`, `system_graph/1`, etc. - Simple graph factories
-  - `dataset/1` - Wraps `Dataset.build/2`, provides defaults for `dataset`
-  - `repository/1` - Wraps `Repository.build/2`, provides defaults for `dataset` and `manifest_graph`
-  - `service_data/1` - Wraps `ServiceData.build/2`, provides default for `manifest_graph`
-  - `service/1` - Wraps `Service.build/2`, provides defaults for `repository` and `local_data`
+  - `dataset/1` - Wraps `Dataset.new/2`, provides defaults for `dataset`
+  - `repository/1` - Wraps `Repository.new/2`, provides defaults for `dataset` and `manifest_graph`
+  - `service_data/1` - Wraps `ServiceData.new/2`, provides default for `manifest_graph`
+  - `service/1` - Wraps `Service.new/2`, provides defaults for `repository` and `local_data`
 
   Basic factories generate prefixed random IDs by default which can be overridden via the `:id` option.
 
@@ -57,7 +57,7 @@ defmodule DCATR.TestFactories do
 
   When adding a new schema (e.g., `NewGraph`):
 
-  1. **Basic Factory**: Add `new_graph/1` wrapping `NewGraph.build/2` with defaults
+  1. **Basic Factory**: Add `new_graph/1` wrapping `NewGraph.new/2` with defaults
   2. **Example Factory**: Add `example_new_graph/1` with fixed ID (e.g., `EX.NewGraph1`)
   3. **Example Plural**: If multiple instances make sense, add `example_new_graphs/1`
   4. **Scenario Update**: If the new schema is part of a hierarchy, update parent scenario functions
@@ -89,7 +89,7 @@ defmodule DCATR.TestFactories do
 
   def data_graph(opts \\ []) do
     id = Keyword.get(opts, :id, generate_id("DataGraph"))
-    DataGraph.build!(id)
+    DataGraph.new!(id)
   end
 
   def example_data_graph(opts \\ []) do
@@ -108,7 +108,7 @@ defmodule DCATR.TestFactories do
 
   def system_graph(opts \\ []) do
     id = Keyword.get(opts, :id, generate_id("SystemGraph"))
-    SystemGraph.build!(id)
+    SystemGraph.new!(id)
   end
 
   def example_system_graph(opts \\ []) do
@@ -127,7 +127,7 @@ defmodule DCATR.TestFactories do
 
   def repository_manifest_graph(opts \\ []) do
     id = Keyword.get(opts, :id, generate_id("ManifestGraph"))
-    RepositoryManifestGraph.build!(id)
+    RepositoryManifestGraph.new!(id)
   end
 
   def example_repository_manifest_graph(opts \\ []) do
@@ -140,7 +140,7 @@ defmodule DCATR.TestFactories do
 
   def service_manifest_graph(opts \\ []) do
     id = Keyword.get(opts, :id, bnode())
-    ServiceManifestGraph.build!(id)
+    ServiceManifestGraph.new!(id)
   end
 
   def example_service_manifest_graph(opts \\ []) do
@@ -153,7 +153,7 @@ defmodule DCATR.TestFactories do
 
   def working_graph(opts \\ []) do
     id = Keyword.get(opts, :id, bnode())
-    WorkingGraph.build!(id)
+    WorkingGraph.new!(id)
   end
 
   def example_working_graph(opts \\ []) do
@@ -175,7 +175,7 @@ defmodule DCATR.TestFactories do
 
     opts = Keyword.replace_lazy(opts, :graphs, expand_list(&data_graph/0))
 
-    case Dataset.build(id, opts) do
+    case Dataset.new(id, opts) do
       {:ok, dataset} -> dataset
       {:error, error} -> raise error
     end
@@ -201,14 +201,7 @@ defmodule DCATR.TestFactories do
 
     opts
     |> Keyword.put_new(:dataset, dataset())
-    |> Keyword.put_new(:manifest_graph, repository_manifest_graph())
-    |> Keyword.replace_lazy(:system_graphs, expand_list(&system_graph/0))
-    |> then(fn opts ->
-      case Repository.build(id, opts) do
-        {:ok, repo} -> repo
-        {:error, error} -> raise error
-      end
-    end)
+    |> build_repository(id)
   end
 
   def example_repository(opts \\ []) do
@@ -235,6 +228,40 @@ defmodule DCATR.TestFactories do
     |> Map.put(:system_graphs, example_repository.system_graphs)
   end
 
+  def single_graph_repository(opts \\ []) do
+    {id, opts} = Keyword.pop(opts, :id, generate_id("Repository"))
+    {primary_graph, opts} = Keyword.pop(opts, :primary_graph, data_graph())
+
+    opts
+    |> Keyword.put(:primary_graph, primary_graph)
+    |> build_repository(id)
+  end
+
+  def multi_graph_with_primary_repository(opts \\ []) do
+    {id, opts} = Keyword.pop(opts, :id, generate_id("Repository"))
+    {ds, opts} = Keyword.pop(opts, :dataset, dataset(graphs: 3))
+    {primary_graph, opts} = Keyword.pop(opts, :primary_graph)
+
+    primary_graph = primary_graph || List.first(ds.graphs)
+
+    opts
+    |> Keyword.put(:dataset, ds)
+    |> Keyword.put(:primary_graph, primary_graph)
+    |> build_repository(id)
+  end
+
+  defp build_repository(opts, id) do
+    opts
+    |> Keyword.put_new(:manifest_graph, repository_manifest_graph())
+    |> Keyword.replace_lazy(:system_graphs, expand_list(&system_graph/0))
+    |> then(fn opts ->
+      case Repository.new(id, opts) do
+        {:ok, repo} -> repo
+        {:error, error} -> raise error
+      end
+    end)
+  end
+
   ###########################################################################
   # ServiceData
 
@@ -246,7 +273,7 @@ defmodule DCATR.TestFactories do
     |> Keyword.replace_lazy(:working_graphs, expand_list(&working_graph/0))
     |> Keyword.replace_lazy(:system_graphs, expand_list(&system_graph/0))
     |> then(fn opts ->
-      case ServiceData.build(id, opts) do
+      case ServiceData.new(id, opts) do
         {:ok, data} -> data
         {:error, error} -> raise error
       end
@@ -288,7 +315,7 @@ defmodule DCATR.TestFactories do
     |> Keyword.put_new(:local_data, service_data())
     |> process_graph_name_mappings()
     |> then(fn opts ->
-      case Service.build(id, opts) do
+      case Service.new(id, opts) do
         {:ok, service} -> service
         {:error, error} -> raise error
       end
