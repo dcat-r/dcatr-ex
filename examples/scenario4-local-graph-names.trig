@@ -1,4 +1,4 @@
-@prefix dcatr: <https://w3id.org/dcat-r#> .
+@prefix dcatr: <https://w3id.org/dcatr#> .
 @prefix dcat:  <http://www.w3.org/ns/dcat#> .
 @prefix ex:    <http://example.org/> .
 @prefix local: <http://localhost/graphs/> .

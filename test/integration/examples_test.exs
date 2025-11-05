@@ -143,7 +143,7 @@ defmodule DCATR.Integration.ExamplesTest do
                __id__: ~I<http://example.org/customers-graph>,
                __additional_statements__: %{
                  ~I<http://www.w3.org/1999/02/22-rdf-syntax-ns#type> => %{
-                   ~I<https://w3id.org/dcat-r#DataGraph> => nil
+                   ~I<https://w3id.org/dcatr#DataGraph> => nil
                  },
                  ~I<http://www.w3.org/ns/dcat#description> => %{
                    ~L"Customer profiles and relationship data" => nil
@@ -155,7 +155,7 @@ defmodule DCATR.Integration.ExamplesTest do
                __id__: ~I<http://example.org/products-graph>,
                __additional_statements__: %{
                  ~I<http://www.w3.org/1999/02/22-rdf-syntax-ns#type> => %{
-                   ~I<https://w3id.org/dcat-r#DataGraph> => nil
+                   ~I<https://w3id.org/dcatr#DataGraph> => nil
                  },
                  ~I<http://www.w3.org/ns/dcat#description> => %{
                    ~L"Contains the complete product catalog with pricing and availability" => nil
@@ -203,7 +203,7 @@ defmodule DCATR.Integration.ExamplesTest do
                __id__: ~I<http://example.org/catalog-2024-09>,
                __additional_statements__: %{
                  ~I<http://www.w3.org/1999/02/22-rdf-syntax-ns#type> => %{
-                   ~I<https://w3id.org/dcat-r#DataGraph> => nil
+                   ~I<https://w3id.org/dcatr#DataGraph> => nil
                  },
                  ~I<http://www.w3.org/ns/dcat#description> => %{
                    ~L"Product catalog snapshot from September 2024" => nil
@@ -220,7 +220,7 @@ defmodule DCATR.Integration.ExamplesTest do
                __id__: ~I<http://example.org/users-2024-09>,
                __additional_statements__: %{
                  ~I<http://www.w3.org/1999/02/22-rdf-syntax-ns#type> => %{
-                   ~I<https://w3id.org/dcat-r#DataGraph> => nil
+                   ~I<https://w3id.org/dcatr#DataGraph> => nil
                  },
                  ~I<http://www.w3.org/ns/dcat#description> => %{
                    ~L"Active user profiles as of September 2024" => nil

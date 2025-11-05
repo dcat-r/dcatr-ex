@@ -8,10 +8,10 @@ defmodule DCATR.NS do
   @vocabdoc """
   The DCAT for RDF Repositories (DCAT-R) vocabulary.
 
-  See <https://w3id.org/dcat-r
+  See <https://w3id.org/dcatr>
   """
   defvocab DCATR,
-    base_iri: "https://w3id.org/dcat-r#",
-    file: "dcat-r.ttl",
+    base_iri: "https://w3id.org/dcatr#",
+    file: "dcatr.ttl",
     case_violations: :fail
 end

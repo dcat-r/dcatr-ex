@@ -1,4 +1,4 @@
-@prefix dcatr: <https://w3id.org/dcat-r#> .
+@prefix dcatr: <https://w3id.org/dcatr#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -50,7 +50,6 @@ Three-value semantics:
 This property enables flexible configuration: most single-graph repositories benefit from automatic designation, while edge cases requiring explicit control can disable it (false mode) or enforce consistency (true mode)."""
             ; skos:scopeNote "When not set in the manifest, the runtime behavior is determined by the application."
     .
-
 
 
 ##########################################################################

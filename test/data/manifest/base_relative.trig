@@ -1,4 +1,4 @@
-@prefix dcatr: <https://w3id.org/dcat-r#> .
+@prefix dcatr: <https://w3id.org/dcatr#> .
 
 _:service-manifest {
     <Service> a dcatr:Service
