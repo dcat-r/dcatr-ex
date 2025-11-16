@@ -528,6 +528,19 @@ defmodule DCATR.ServiceTest do
       assert Service.resolve_graph_selector(service, :primary) == nil
     end
 
+    test "resolves :default when default graph is designated" do
+      service = example_service()
+
+      assert Service.resolve_graph_selector(service, :default) ==
+               List.first(service.repository.dataset.graphs)
+    end
+
+    test "returns nil for :default when no default graph is designated" do
+      service = example_service(with_graph_names: false)
+
+      assert Service.resolve_graph_selector(service, :default) == nil
+    end
+
     test "returns :undefined for unknown selectors" do
       service = example_service()
 
@@ -659,6 +672,10 @@ defmodule DCATR.ServiceTest do
 
     test "returns nil for non-existent graph ID (default strict: true)", %{service: service} do
       assert Service.graph_name(service, EX.NonExistentGraph) == nil
+    end
+
+    test "returns :default for :default selector", %{service: service} do
+      assert Service.graph_name(service, :default) == :default
     end
   end
 

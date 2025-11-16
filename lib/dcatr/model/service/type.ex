@@ -458,10 +458,14 @@ defmodule DCATR.Service.Type do
   @doc """
   Default implementation of `c:DCATR.Catalog.resolve_graph_selector/2`.
 
-  Delegates selector resolution to Repository and ServiceData catalogs.
+  Resolves `:default` selector at service level, then delegates to Repository and ServiceData catalogs.
   """
   @spec resolve_graph_selector(schema(), Catalog.selector()) ::
           DCATR.Graph.t() | nil | :undefined
+  def resolve_graph_selector(%service_type{} = service, :default) do
+    service_type.default_graph(service)
+  end
+
   def resolve_graph_selector(
         %{
           repository: %repository_type{} = repository,
