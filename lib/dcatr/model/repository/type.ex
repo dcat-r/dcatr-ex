@@ -17,6 +17,13 @@ defmodule DCATR.Repository.Type do
   """
   @callback system_graphs(repository :: schema()) :: [DCATR.SystemGraph.t()]
 
+  @doc """
+  Returns the primary graph if one is designated.
+
+  Override to customize primary graph selection.
+  """
+  @callback primary_graph(repository :: schema()) :: DCATR.DataGraph.t() | nil
+
   defmacro __using__(_) do
     quote do
       @behaviour DCATR.Repository.Type
@@ -67,7 +74,23 @@ defmodule DCATR.Repository.Type do
         DCATR.Repository.Type.system_graphs(repo)
       end
 
-      defoverridable resolve_graph_selector: 2, graph: 2, graphs: 1, graphs: 2, system_graphs: 1
+      @doc """
+      Returns the primary graph if one is designated.
+
+      This implementation of `c:DCATR.Repository.Type.primary_graph/1` delegates to
+      `DCATR.Repository.Type.primary_graph/1`.
+      """
+      @impl true
+      def primary_graph(repo) do
+        DCATR.Repository.Type.primary_graph(repo)
+      end
+
+      defoverridable resolve_graph_selector: 2,
+                     graph: 2,
+                     graphs: 1,
+                     graphs: 2,
+                     system_graphs: 1,
+                     primary_graph: 1
     end
   end
 
@@ -167,4 +190,12 @@ defmodule DCATR.Repository.Type do
   """
   @spec system_graphs(schema()) :: [SystemGraph.t()]
   def system_graphs(%_repository_type{system_graphs: graphs}), do: graphs
+
+  @doc """
+  Default implementation of `c:primary_graph/1`.
+
+  Returns the `primary_graph` field.
+  """
+  @spec primary_graph(schema()) :: DCATR.DataGraph.t() | nil
+  def primary_graph(%_repository_type{primary_graph: primary_graph}), do: primary_graph
 end

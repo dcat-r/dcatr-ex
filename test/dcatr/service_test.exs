@@ -445,6 +445,34 @@ defmodule DCATR.ServiceTest do
            )
   end
 
+  describe "primary_graph/1" do
+    test "returns primary graph from repository in single-graph mode" do
+      primary_graph = data_graph()
+      repo = single_graph_repository(primary_graph: primary_graph)
+      service_data = service_data()
+      service = service(repository: repo, local_data: service_data)
+
+      assert Service.primary_graph(service) == primary_graph
+    end
+
+    test "returns primary graph from repository in multi-graph mode" do
+      primary_graph = data_graph()
+      other_graph = data_graph()
+      ds = dataset(graphs: [primary_graph, other_graph])
+      repo = multi_graph_with_primary_repository(dataset: ds, primary_graph: primary_graph)
+      service_data = service_data()
+      service = service(repository: repo, local_data: service_data)
+
+      assert Service.primary_graph(service) == primary_graph
+    end
+
+    test "returns nil when repository has no primary graph" do
+      service = example_service()
+
+      assert Service.primary_graph(service) == nil
+    end
+  end
+
   describe "graph/2" do
     setup :example_service_scenario
 

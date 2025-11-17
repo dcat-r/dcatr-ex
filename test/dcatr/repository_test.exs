@@ -489,6 +489,30 @@ defmodule DCATR.RepositoryTest do
     assert repository(system_graphs: []) |> Repository.system_graphs() == []
   end
 
+  describe "primary_graph/1" do
+    test "returns primary graph in single-graph mode" do
+      primary_graph = data_graph()
+      repo = single_graph_repository(primary_graph: primary_graph)
+
+      assert Repository.primary_graph(repo) == primary_graph
+    end
+
+    test "returns primary graph in multi-graph mode" do
+      primary_graph = data_graph()
+      other_graph = data_graph()
+      ds = dataset(graphs: [primary_graph, other_graph])
+      repo = multi_graph_with_primary_repository(dataset: ds, primary_graph: primary_graph)
+
+      assert Repository.primary_graph(repo) == primary_graph
+    end
+
+    test "returns nil when no primary_graph" do
+      repo = example_repository()
+
+      assert Repository.primary_graph(repo) == nil
+    end
+  end
+
   describe "has_graph?/2" do
     setup :example_repository_scenario
 

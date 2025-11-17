@@ -68,6 +68,13 @@ defmodule DCATR.Service.Type do
   @callback default_graph(service :: schema()) :: DCATR.Graph.t() | nil
 
   @doc """
+  Returns the primary graph from the repository if one is designated.
+
+  Override to customize primary graph selection.
+  """
+  @callback primary_graph(service :: schema()) :: DCATR.DataGraph.t() | nil
+
+  @doc """
   Returns the effective value of `use_primary_as_default` for this service.
 
   Resolves the three-value semantics:
@@ -196,6 +203,17 @@ defmodule DCATR.Service.Type do
       end
 
       @doc """
+      Returns the primary graph from the repository if one is designated.
+
+      This implementation of `c:DCATR.Service.Type.primary_graph/1` delegates to
+      `DCATR.Service.Type.primary_graph/1`.
+      """
+      @impl true
+      def primary_graph(service) do
+        DCATR.Service.Type.primary_graph(service)
+      end
+
+      @doc """
       Returns the effective value of `use_primary_as_default` for this service.
 
       This implementation of `c:DCATR.Service.Type.use_primary_as_default/1` delegates to
@@ -238,6 +256,7 @@ defmodule DCATR.Service.Type do
                      graph_by_id: 2,
                      resolve_graph_selector: 2,
                      default_graph: 1,
+                     primary_graph: 1,
                      use_primary_as_default: 1,
                      graph_name_mapping: 1
     end
@@ -559,6 +578,16 @@ defmodule DCATR.Service.Type do
   @spec default_graph(schema()) :: DCATR.Graph.t() | nil
   def default_graph(%service_type{} = service) do
     service_type.graph_by_name(service, :default)
+  end
+
+  @doc """
+  Default implementation of `c:primary_graph/1`.
+
+  Delegates to the repository's `c:DCATR.Repository.Type.primary_graph/1`.
+  """
+  @spec primary_graph(schema()) :: DCATR.DataGraph.t() | nil
+  def primary_graph(%{repository: %repository_type{} = repository}) do
+    repository_type.primary_graph(repository)
   end
 
   @doc """
