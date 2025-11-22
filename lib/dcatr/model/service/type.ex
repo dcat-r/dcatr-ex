@@ -268,6 +268,8 @@ defmodule DCATR.Service.Type do
 
   import RDF.Guards
 
+  @preloading_depth 10
+
   @doc """
   Default implementation of `c:load_from_dataset/3`.
 
@@ -281,17 +283,37 @@ defmodule DCATR.Service.Type do
     with {:ok, service_graph} <- Manifest.service_manifest_graph(dataset),
          {:ok, repo_graph} <- Manifest.repository_manifest_graph(dataset),
          {:ok, service} <-
-           service_type.load(service_graph, service_id, Keyword.put(opts, :depth, 99)),
-         {:ok, repo_id} <- extract_repository_id(service),
-         {:ok, repository} <- repository_type(service_type).load(repo_graph, repo_id, depth: 99),
+           service_type.load(
+             service_graph,
+             service_id,
+             Keyword.put(opts, :depth, @preloading_depth)
+           ),
          {:ok, service} <-
-           %{service | repository: repository} |> service_type.load_graph_names(service_graph) do
+           Grax.preload(service, repository_preloading_graph(service, repo_graph),
+             properties: :repository,
+             depth: @preloading_depth
+           ),
+         {:ok, service} <- service_type.load_graph_names(service, service_graph) do
       {:ok, service}
     end
   end
 
-  defp extract_repository_id(%_{repository: %RDF.IRI{} = repo_iri}), do: {:ok, repo_iri}
-  defp extract_repository_id(%_{repository: %{__id__: repo_iri}}), do: {:ok, repo_iri}
+  defp repository_preloading_graph(%service_type{} = service, graph) do
+    RDF.Graph.add(
+      graph,
+      {service.__id__, repository_property_iri(service_type), extract_repository_id(service)}
+    )
+  end
+
+  defp extract_repository_id(%_{repository: %RDF.IRI{} = repo_iri}), do: repo_iri
+  defp extract_repository_id(%_{repository: %{__id__: repo_iri}}), do: repo_iri
+
+  defp repository_property_iri(service_type) do
+    case service_type.__property__(:repository) do
+      %Grax.Schema.LinkProperty{iri: repository_property_iri} -> repository_property_iri
+      invalid -> raise "Invalid repository property: #{inspect(invalid)}"
+    end
+  end
 
   @doc """
   Default implementation of `c:load_graph_names/2`.

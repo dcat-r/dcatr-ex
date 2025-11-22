@@ -4,6 +4,7 @@ defmodule DCATR.ServiceTest do
   doctest DCATR.Service
 
   alias DCATR.Service
+  alias RDF.NS.RDFS
 
   test "new/1,2" do
     repository = repository()
@@ -93,12 +94,7 @@ defmodule DCATR.ServiceTest do
              |> Service.load(EX.Service1, depth: 99) ==
                {:ok,
                 Service.new!(EX.Service1,
-                  repository:
-                    repository(
-                      id: EX.Repository1,
-                      dataset: dataset(id: EX.Dataset1),
-                      manifest_graph: repository_manifest_graph(id: EX.RepositoryManifest)
-                    ),
+                  repository: RDF.iri(EX.Repository1),
                   local_data:
                     service_data(
                       id: EX.ServiceData1,
@@ -184,6 +180,42 @@ defmodule DCATR.ServiceTest do
       assert %DCATR.Repository{} = service.repository
       assert service.repository.__id__ == RDF.iri(EX.Repository1)
       assert service.repository.dataset.__id__ == RDF.iri(EX.Dataset1)
+    end
+
+    test "handles partial repository statements in service manifest graph" do
+      service_graph =
+        RDF.graph([
+          {EX.Service1, RDF.type(), DCATR.Service},
+          {EX.Service1, DCATR.serviceRepository(), EX.Repository1},
+          {EX.Service1, DCATR.serviceLocalData(), EX.ServiceData1},
+          {EX.ServiceData1, DCATR.serviceManifestGraph(), ~B<ServiceManifest>},
+          {EX.Repository1, RDF.type(), DCATR.Repository},
+          {EX.Repository1, RDFS.label(), "Partial repo info"}
+        ])
+
+      repo_graph =
+        RDF.graph([
+          {EX.Repository1, RDF.type(), DCATR.Repository},
+          {EX.Repository1, DCATR.repositoryDataset(), EX.Dataset1},
+          {EX.Repository1, DCATR.repositoryManifestGraph(), EX.RepositoryManifest},
+          {EX.Dataset1, RDF.type(), DCATR.Dataset}
+        ])
+
+      dataset =
+        RDF.Dataset.new()
+        |> RDF.Dataset.add(service_graph,
+          graph: DCATR.Manifest.Loader.service_manifest_graph_name()
+        )
+        |> RDF.Dataset.add(repo_graph,
+          graph: DCATR.Manifest.Loader.repository_manifest_graph_name()
+        )
+
+      assert {:ok, service} = Service.load_from_dataset(dataset, EX.Service1)
+
+      assert %DCATR.Repository{} = service.repository
+      assert service.repository.__id__ == RDF.iri(EX.Repository1)
+      assert service.repository.dataset.__id__ == RDF.iri(EX.Dataset1)
+      assert service.repository.manifest_graph.__id__ == RDF.iri(EX.RepositoryManifest)
     end
 
     test "loads service with local graph name mappings" do

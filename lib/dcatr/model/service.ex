@@ -61,12 +61,7 @@ defmodule DCATR.Service do
   alias DCATR.{Repository, ServiceData}
 
   schema DCATR.Service do
-    link repository: DCATR.serviceRepository(),
-         type: Repository,
-         required: true,
-         on_missing_description: :use_rdf_node,
-         depth: 0
-
+    link repository: DCATR.serviceRepository(), type: Repository, required: true, depth: false
     link local_data: DCATR.serviceLocalData(), type: ServiceData, required: true, depth: +1
 
     property use_primary_as_default: DCATR.usePrimaryAsDefault(), type: :boolean
