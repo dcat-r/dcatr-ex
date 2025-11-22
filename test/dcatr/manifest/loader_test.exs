@@ -146,10 +146,17 @@ defmodule DCATR.Manifest.LoaderTest do
       assert RDF.Graph.include?(result, {EX.Dataset, RDF.type(), DCATR.Dataset})
     end
 
-    test "classifies service.ENV.ttl into _:service-manifest graph" do
-      file = TestData.manifest("env_specific/service/service.test.ttl")
-      assert {:ok, result} = DCATR.Manifest.Loader.load_file(file, manifest_type: DCATR.Manifest)
-      assert %RDF.Graph{name: ~B<service-manifest>} = result
+    test "classifies service.ENV.ttl into _:service-manifest graph", %{tmp_dir: tmp_dir} do
+      for env <- ["dev", "test", "prod"] do
+        dir = Path.join(tmp_dir, "/manifest/env_specific/service")
+        File.mkdir_p!(dir)
+        file = Path.join(dir, "service.#{env}.ttl")
+
+        File.touch!(file)
+
+        assert {:ok, %RDF.Graph{name: ~B<service-manifest>}} =
+                 DCATR.Manifest.Loader.load_file(file, manifest_type: DCATR.Manifest)
+      end
     end
 
     test "classifies dataset.ENV.ttl into _:repository-manifest graph", %{tmp_dir: tmp_dir} do
