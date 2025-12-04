@@ -22,10 +22,7 @@ defmodule CustomManifest do
 
   def load_file(file, opts) do
     with {:ok, data} <- super(file, opts) do
-      case data do
-        %Dataset{} = dataset ->
-          {:ok, Dataset.add(dataset, {EX.S2, EX.P2, EX.O2})}
-      end
+      {:ok, RDF.Data.merge(data, RDF.description(EX.S2, init: {EX.P2, EX.O2}))}
     end
   end
 
