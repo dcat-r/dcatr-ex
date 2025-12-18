@@ -72,7 +72,7 @@ defmodule DCATR.Manifest.GraphExpansion do
     if opts[:depth] == 0 do
       manifest_graph
     else
-      seeds = RDF.Graph.objects(manifest_graph)
+      seeds = RDF.Data.object_resources(manifest_graph)
 
       Enum.reduce(seeds, manifest_graph, fn resource, acc ->
         RDF.Graph.reachable(
