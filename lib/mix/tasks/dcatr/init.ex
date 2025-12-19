@@ -56,6 +56,6 @@ defmodule Mix.Tasks.Dcatr.Init do
     end
   end
 
-  defp manifest_type(nil), do: Application.get_env(:dcatr, :manifest_type, DCATR.Manifest)
+  defp manifest_type(nil), do: DCATR.manifest_type()
   defp manifest_type(type), do: Module.concat([type])
 end
