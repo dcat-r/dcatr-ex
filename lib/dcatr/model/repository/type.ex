@@ -111,7 +111,8 @@ defmodule DCATR.Repository.Type do
   @spec resolve_graph_selector(schema(), Catalog.selector()) :: Graph.t() | nil | :undefined
   def resolve_graph_selector(repository, selector)
 
-  def resolve_graph_selector(%_{primary_graph: primary_graph}, :primary), do: primary_graph
+  def resolve_graph_selector(%repository_type{} = repository, :primary),
+    do: repository_type.primary_graph(repository)
 
   def resolve_graph_selector(%_{manifest_graph: manifest_graph}, :repository_manifest),
     do: manifest_graph
@@ -119,9 +120,8 @@ defmodule DCATR.Repository.Type do
   def resolve_graph_selector(%_{manifest_graph: manifest_graph}, :repo_manifest),
     do: manifest_graph
 
-  def resolve_graph_selector(%_{dataset: %dataset_type{} = dataset}, selector) do
-    dataset_type.resolve_graph_selector(dataset, selector)
-  end
+  def resolve_graph_selector(%_{dataset: %dataset_type{} = dataset}, selector),
+    do: dataset_type.resolve_graph_selector(dataset, selector)
 
   def resolve_graph_selector(_repository, _selector), do: :undefined
 
@@ -141,14 +141,21 @@ defmodule DCATR.Repository.Type do
 
   defp find_graph_by_id(%_{manifest_graph: %{__id__: id} = graph}, id), do: graph
 
-  defp find_graph_by_id(%_{primary_graph: %{__id__: id} = graph}, id), do: graph
-
-  defp find_graph_by_id(%_{dataset: nil, system_graphs: system_graphs}, id) do
-    Enum.find(system_graphs, &(&1.__id__ == id))
+  defp find_graph_by_id(%_{dataset: dataset} = repository, id) do
+    find_primary_graph_by_id(repository, id) ||
+      (dataset && Dataset.graph(dataset, id)) ||
+      find_system_graph_by_id(repository, id)
   end
 
-  defp find_graph_by_id(%_{dataset: dataset, system_graphs: system_graphs}, id) do
-    Dataset.graph(dataset, id) || Enum.find(system_graphs, &(&1.__id__ == id))
+  defp find_primary_graph_by_id(%repository_type{} = repository, id) do
+    case repository_type.primary_graph(repository) do
+      %{__id__: ^id} = graph -> graph
+      _ -> nil
+    end
+  end
+
+  defp find_system_graph_by_id(%repository_type{} = repository, id) do
+    repository |> repository_type.system_graphs() |> Enum.find(&(&1.__id__ == id))
   end
 
   @doc """
@@ -161,11 +168,11 @@ defmodule DCATR.Repository.Type do
   - `:type` - Filter by graph type: `:data`, `:system`, `:manifest`, or list of types
   """
   @spec graphs(schema(), type: graph_type() | [graph_type()]) :: [Graph.t()]
-  def graphs(%_repository_type{} = repository, opts \\ []) do
+  def graphs(%repository_type{} = repository, opts \\ []) do
     case Keyword.get(opts, :type) do
       nil -> collect_graphs(repository)
       :data -> data_graphs(repository)
-      :system -> repository.system_graphs
+      :system -> repository_type.system_graphs(repository)
       :manifest -> List.wrap(repository.manifest_graph)
       types when is_list(types) -> Enum.flat_map(types, &graphs(repository, type: &1))
       _ -> []
@@ -173,14 +180,24 @@ defmodule DCATR.Repository.Type do
   end
 
   defp data_graphs(%_{dataset: dataset}) when not is_nil(dataset), do: Dataset.graphs(dataset)
-  defp data_graphs(%_{primary_graph: primary_graph}), do: List.wrap(primary_graph)
 
-  defp collect_graphs(%_{dataset: nil, primary_graph: primary_graph} = repository) do
-    [repository.manifest_graph, primary_graph | repository.system_graphs]
+  defp data_graphs(%repository_type{} = repository) do
+    List.wrap(repository_type.primary_graph(repository))
   end
 
-  defp collect_graphs(repository) do
-    [repository.manifest_graph | repository.system_graphs ++ Dataset.graphs(repository.dataset)]
+  defp collect_graphs(%repository_type{dataset: nil} = repository) do
+    [
+      repository.manifest_graph,
+      repository_type.primary_graph(repository)
+      | repository_type.system_graphs(repository)
+    ]
+  end
+
+  defp collect_graphs(%repository_type{dataset: dataset} = repository) do
+    [
+      repository.manifest_graph
+      | repository_type.system_graphs(repository) ++ Dataset.graphs(dataset)
+    ]
   end
 
   @doc """

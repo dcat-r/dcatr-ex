@@ -361,9 +361,12 @@ defmodule DCATR.Service.Type do
     end
   end
 
-  defp apply_primary_as_default(%service_type{repository: repository} = service) do
+  defp apply_primary_as_default(
+         %service_type{repository: %repository_type{} = repository} = service
+       ) do
     use_primary_as_default = service_type.use_primary_as_default(service)
-    primary_graph_id = repository.primary_graph && repository.primary_graph.__id__
+    primary_graph = repository_type.primary_graph(repository)
+    primary_graph_id = primary_graph && primary_graph.__id__
     primary_name = primary_graph_id && Map.get(service.graph_names_by_id, primary_graph_id)
     explicit_default_id = Map.get(service.graph_names, :default)
 

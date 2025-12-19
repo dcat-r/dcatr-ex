@@ -134,9 +134,9 @@ defmodule DCATR.ServiceData.Type do
 
   defp find_graph_by_id(%_{manifest_graph: %{__id__: id} = graph}, id), do: graph
 
-  defp find_graph_by_id(%_{system_graphs: system_graphs, working_graphs: working_graphs}, id) do
-    Enum.find(working_graphs, &(&1.__id__ == id)) ||
-      Enum.find(system_graphs, &(&1.__id__ == id))
+  defp find_graph_by_id(%service_data_type{} = service_data, id) do
+    Enum.find(service_data_type.working_graphs(service_data), &(&1.__id__ == id)) ||
+      Enum.find(service_data_type.system_graphs(service_data), &(&1.__id__ == id))
   end
 
   @doc """
@@ -149,19 +149,23 @@ defmodule DCATR.ServiceData.Type do
   - `:type` - Filter by graph type: `:manifest`, `:working`, `:system`, or list of types
   """
   @spec graphs(schema(), type: graph_type() | [graph_type()]) :: [Graph.t()]
-  def graphs(%_service_data_type{} = service_data, opts \\ []) do
+  def graphs(%service_data_type{} = service_data, opts \\ []) do
     case Keyword.get(opts, :type) do
       nil -> collect_graphs(service_data)
       :manifest -> List.wrap(service_data.manifest_graph)
-      :working -> service_data.working_graphs
-      :system -> service_data.system_graphs
+      :working -> service_data_type.working_graphs(service_data)
+      :system -> service_data_type.system_graphs(service_data)
       types when is_list(types) -> Enum.flat_map(types, &graphs(service_data, type: &1))
       _ -> []
     end
   end
 
-  defp collect_graphs(service_data) do
-    [service_data.manifest_graph | service_data.system_graphs ++ service_data.working_graphs]
+  defp collect_graphs(%service_data_type{} = service_data) do
+    [
+      service_data.manifest_graph
+      | service_data_type.system_graphs(service_data) ++
+          service_data_type.working_graphs(service_data)
+    ]
   end
 
   @doc """
