@@ -5,7 +5,6 @@ defmodule DCATR.ServiceData.Type do
 
   @type t :: module()
   @type schema :: Grax.Schema.t()
-  @type graph_type :: :manifest | :working | :system
 
   @doc """
   Returns all working graphs in the service data.
@@ -30,8 +29,8 @@ defmodule DCATR.ServiceData.Type do
   defmacro __using__(_) do
     quote do
       @behaviour DCATR.ServiceData.Type
+      use DCATR.Directory.Type
       use DCATR.Catalog
-      use Grax.Schema
 
       @doc """
       Resolves a symbolic selector to a graph.
@@ -39,32 +38,28 @@ defmodule DCATR.ServiceData.Type do
       This implementation of `c:DCATR.Catalog.resolve_graph_selector/2` delegates to
       `DCATR.ServiceData.Type.resolve_graph_selector/2`.
       """
-      @impl true
+      @impl DCATR.Catalog
       def resolve_graph_selector(data, selector) do
         DCATR.ServiceData.Type.resolve_graph_selector(data, selector)
       end
 
       @doc """
-      Returns a graph by ID or symbolic selector.
+      Returns all direct graphs in the service data.
 
-      This implementation of `c:DCATR.Catalog.graph/2` delegates to
-      `DCATR.ServiceData.Type.graph/2`.
+      This implementation of `c:DCATR.Directory.Type.graphs/1` delegates to
+      `DCATR.ServiceData.Type.graphs/1`.
       """
-      @impl true
-      def graph(data, selector_or_id) do
-        DCATR.ServiceData.Type.graph(data, selector_or_id)
-      end
+      @impl DCATR.Directory.Type
+      def graphs(sd), do: DCATR.ServiceData.Type.graphs(sd)
 
       @doc """
-      Returns all graphs in the service data.
+      Returns all direct directories in the service data.
 
-      This implementation of `c:DCATR.Catalog.graphs/2` delegates to
-      `DCATR.ServiceData.Type.graphs/2`.
+      This implementation of `c:DCATR.Directory.Type.directories/1` always returns an empty list,
+      as service data does not contain sub-directories.
       """
-      @impl true
-      def graphs(data, opts \\ []) do
-        DCATR.ServiceData.Type.graphs(data, opts)
-      end
+      @impl DCATR.Directory.Type
+      def directories(_sd), do: []
 
       @doc """
       Returns all working graphs in the service data.
@@ -72,7 +67,7 @@ defmodule DCATR.ServiceData.Type do
       This implementation of `c:DCATR.ServiceData.Type.working_graphs/1` delegates to
       `DCATR.ServiceData.Type.working_graphs/1`.
       """
-      @impl true
+      @impl DCATR.ServiceData.Type
       def working_graphs(data) do
         DCATR.ServiceData.Type.working_graphs(data)
       end
@@ -83,15 +78,12 @@ defmodule DCATR.ServiceData.Type do
       This implementation of `c:DCATR.ServiceData.Type.system_graphs/1` delegates to
       `DCATR.ServiceData.Type.system_graphs/1`.
       """
-      @impl true
+      @impl DCATR.ServiceData.Type
       def system_graphs(data) do
         DCATR.ServiceData.Type.system_graphs(data)
       end
 
       defoverridable resolve_graph_selector: 2,
-                     graph: 2,
-                     graphs: 1,
-                     graphs: 2,
                      working_graphs: 1,
                      system_graphs: 1
     end
@@ -119,53 +111,18 @@ defmodule DCATR.ServiceData.Type do
   def resolve_graph_selector(_service_data, _selector), do: :undefined
 
   @doc """
-  Default implementation of `c:DCATR.Catalog.graph/2`.
+  Default implementation of `c:DCATR.Directory.Type.graphs/1` for service data.
 
-  Resolves selectors via `c:resolve_graph_selector/2`, otherwise searches by ID
-  in manifest graph, working graphs, and system graphs.
+  Returns all graph members: manifest, working graphs, and system graphs.
   """
-  @spec graph(schema(), Catalog.id_or_selector()) :: Graph.t() | nil
-  def graph(%service_data_type{} = service_data, id_or_selector) do
-    case service_data_type.resolve_graph_selector(service_data, id_or_selector) do
-      :undefined -> find_graph_by_id(service_data, RDF.coerce_graph_name(id_or_selector))
-      result -> result
-    end
-  end
-
-  defp find_graph_by_id(%_{manifest_graph: %{__id__: id} = graph}, id), do: graph
-
-  defp find_graph_by_id(%service_data_type{} = service_data, id) do
-    Enum.find(service_data_type.working_graphs(service_data), &(&1.__id__ == id)) ||
-      Enum.find(service_data_type.system_graphs(service_data), &(&1.__id__ == id))
-  end
-
-  @doc """
-  Default implementation of `c:DCATR.Catalog.graphs/2`.
-
-  Returns all graphs (manifest + system + working) by default, or filters by `:type` option.
-
-  ## Options
-
-  - `:type` - Filter by graph type: `:manifest`, `:working`, `:system`, or list of types
-  """
-  @spec graphs(schema(), type: graph_type() | [graph_type()]) :: [Graph.t()]
-  def graphs(%service_data_type{} = service_data, opts \\ []) do
-    case Keyword.get(opts, :type) do
-      nil -> collect_graphs(service_data)
-      :manifest -> List.wrap(service_data.manifest_graph)
-      :working -> service_data_type.working_graphs(service_data)
-      :system -> service_data_type.system_graphs(service_data)
-      types when is_list(types) -> Enum.flat_map(types, &graphs(service_data, type: &1))
-      _ -> []
-    end
-  end
-
-  defp collect_graphs(%service_data_type{} = service_data) do
+  @spec graphs(schema()) :: [Graph.t()]
+  def graphs(%service_data_type{} = service_data) do
     [
       service_data.manifest_graph
-      | service_data_type.system_graphs(service_data) ++
-          service_data_type.working_graphs(service_data)
+      | service_data_type.working_graphs(service_data) ++
+          service_data_type.system_graphs(service_data)
     ]
+    |> Enum.reject(&is_nil/1)
   end
 
   @doc """

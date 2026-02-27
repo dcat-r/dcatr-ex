@@ -1,7 +1,7 @@
 defmodule DCATR.Integration.ExamplesTest do
   use DCATR.Case
 
-  alias DCATR.{Manifest, Service, Repository, Dataset, DataGraph}
+  alias DCATR.{Manifest, Service, Repository, Dataset, DataGraph, Directory}
 
   import RDF.Sigils
 
@@ -102,16 +102,16 @@ defmodule DCATR.Integration.ExamplesTest do
     assert %DataGraph{__id__: ~I<http://example.org/main-graph>} =
              Service.graph(service, :primary)
 
-    # Verify Repository.graphs returns all graphs without duplicates (including manifest)
-    all_graphs = Repository.graphs(repository)
+    # Verify Repository.all_graphs returns all graphs without duplicates (including manifest)
+    all_graphs = Repository.all_graphs(repository)
     assert length(all_graphs) == 4
     assert ~I<http://example.org/main-graph> in Enum.map(all_graphs, & &1.__id__)
     assert ~I<http://example.org/aux-graph-1> in Enum.map(all_graphs, & &1.__id__)
     assert ~I<http://example.org/aux-graph-2> in Enum.map(all_graphs, & &1.__id__)
     assert ~I<http://example.org/repository-manifest> in Enum.map(all_graphs, & &1.__id__)
 
-    # Verify data graphs only (no duplicates)
-    data_graphs = Repository.graphs(repository, type: :data)
+    # Verify data graphs only (no duplicates) via Dataset.all_graphs
+    data_graphs = Dataset.all_graphs(dataset)
     assert length(data_graphs) == 3
     assert ~I<http://example.org/main-graph> in Enum.map(data_graphs, & &1.__id__)
     assert ~I<http://example.org/aux-graph-1> in Enum.map(data_graphs, & &1.__id__)
@@ -321,12 +321,98 @@ defmodule DCATR.Integration.ExamplesTest do
 
     # Verify SystemGraph (history-graph) is accessible
     assert [%DCATR.SystemGraph{__id__: ~I<http://example.org/history-graph>}] =
-             Repository.graphs(Manifest.repository!(example_opts), type: :system)
+             Repository.system_graphs(Manifest.repository!(example_opts))
 
     # Verify repository manifest graph
     manifest_graph = Repository.graph(Manifest.repository!(example_opts), :repository_manifest)
 
     assert %DCATR.RepositoryManifestGraph{__id__: ~I<http://example.org/repository-manifest>} =
              manifest_graph
+  end
+
+  test "Scenario 7: Dataset with Directory Hierarchy" do
+    example_opts = [load_path: "examples/scenario7-directory-hierarchy.trig"]
+
+    assert %Service{__id__: ~I<http://example.org/myService>} =
+             service = Manifest.service!(example_opts)
+
+    assert %Repository{__id__: ~I<http://example.org/myRepository>} =
+             repository = Manifest.repository!(example_opts)
+
+    assert %Dataset{__id__: ~I<http://example.org/myDataset>} =
+             dataset = Manifest.dataset!(example_opts)
+
+    # Verify dual-use mode: primary graph + dataset with directories
+    assert %DataGraph{__id__: ~I<http://example.org/outline>} = repository.primary_graph
+    assert repository.dataset != nil
+
+    # Verify Dataset.graphs/1 returns only direct graphs (not directory contents)
+    direct_graphs = Dataset.graphs(dataset)
+    assert length(direct_graphs) == 1
+    assert [%DataGraph{__id__: ~I<http://example.org/outline>}] = direct_graphs
+
+    # Verify Dataset.directories/1 returns the two directories
+    directories = Dataset.directories(dataset)
+    assert length(directories) == 2
+    dir_ids = Enum.map(directories, & &1.__id__) |> Enum.sort()
+    assert dir_ids == Enum.sort([~I<http://example.org/derived>, ~I<http://example.org/input>])
+
+    # Verify directory contents
+    input_dir = Enum.find(directories, &(&1.__id__ == ~I<http://example.org/input>))
+    assert length(Directory.members(input_dir)) == 2
+    input_graph_ids = Directory.graphs(input_dir) |> Enum.map(& &1.__id__) |> Enum.sort()
+
+    assert input_graph_ids ==
+             Enum.sort([~I<http://example.org/source-data>, ~I<http://example.org/mapping-data>])
+
+    derived_dir = Enum.find(directories, &(&1.__id__ == ~I<http://example.org/derived>))
+    assert [%DataGraph{__id__: ~I<http://example.org/results>}] = Directory.members(derived_dir)
+
+    # Verify Dataset.all_graphs/1 returns all graphs (direct + from directories)
+    all_data_graphs = Dataset.all_graphs(dataset)
+    assert length(all_data_graphs) == 4
+    all_ids = Enum.map(all_data_graphs, & &1.__id__) |> Enum.sort()
+
+    assert all_ids ==
+             Enum.sort([
+               ~I<http://example.org/outline>,
+               ~I<http://example.org/source-data>,
+               ~I<http://example.org/mapping-data>,
+               ~I<http://example.org/results>
+             ])
+
+    # Verify Dataset.find_graph/2 finds graphs in directories
+    assert %DataGraph{__id__: ~I<http://example.org/source-data>} =
+             Dataset.find_graph(dataset, ~I<http://example.org/source-data>)
+
+    assert %DataGraph{__id__: ~I<http://example.org/results>} =
+             Dataset.find_graph(dataset, ~I<http://example.org/results>)
+
+    # Verify Repository.graph/2 finds graphs in directories by ID
+    assert %DataGraph{__id__: ~I<http://example.org/source-data>} =
+             Repository.graph(repository, ~I<http://example.org/source-data>)
+
+    assert %DataGraph{__id__: ~I<http://example.org/results>} =
+             Repository.graph(repository, ~I<http://example.org/results>)
+
+    # Verify Dataset.all_graphs returns all data graphs (including from directories)
+    repo_data_graphs = Dataset.all_graphs(dataset)
+    assert length(repo_data_graphs) == 4
+
+    # Verify :primary selector works
+    assert %DataGraph{__id__: ~I<http://example.org/outline>} =
+             Repository.graph(repository, :primary)
+
+    assert %DataGraph{__id__: ~I<http://example.org/outline>} =
+             Service.graph(service, :primary)
+
+    # Verify Service can find directory graphs by ID
+    assert %DataGraph{__id__: ~I<http://example.org/source-data>} =
+             Service.graph(service, ~I<http://example.org/source-data>)
+
+    # Verify automatic primary-as-default designation
+    assert Service.graph_name_mapping(service) == %{
+             :default => ~I<http://example.org/outline>
+           }
   end
 end

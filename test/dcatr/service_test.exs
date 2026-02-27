@@ -645,7 +645,7 @@ defmodule DCATR.ServiceTest do
     end
   end
 
-  describe "graphs/2" do
+  describe "graphs/1" do
     setup :example_service_scenario
 
     test "returns all graphs by default", context do
@@ -657,10 +657,6 @@ defmodule DCATR.ServiceTest do
       assert Enum.all?(context.working_graphs, &(&1 in graphs))
       assert Enum.all?(context.system_graphs, &(&1 in graphs))
       assert Enum.all?(context.local_system_graphs, &(&1 in graphs))
-    end
-
-    test "filters by type option", %{service: service, working_graphs: working_graphs} do
-      assert Service.graphs(service, type: :working) == working_graphs
     end
   end
 

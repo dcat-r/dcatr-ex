@@ -2,11 +2,10 @@ defmodule DCATR.Service.Type do
   @moduledoc """
   Behaviour for service types that provide operations for repository access and processing.
   """
-  alias DCATR.{Service, Repository, ServiceData, DuplicateGraphNameError}
+  alias DCATR.{Service, DuplicateGraphNameError}
 
   @type t :: module()
   @type schema :: Grax.Schema.t()
-  @type graph_type :: Repository.Type.graph_type() | ServiceData.Type.graph_type()
   @type coercible_graph_name :: Service.graph_name() | RDF.IRI.coercible()
 
   @doc """
@@ -172,23 +171,21 @@ defmodule DCATR.Service.Type do
       @doc """
       Returns a graph by ID, local name, or symbolic selector.
 
-      This implementation of `c:DCATR.Catalog.graph/2` delegates to
-      `DCATR.Service.Type.graph/2`.
+      This overrides `DCATR.Catalog`'s generated `graph/2` to add local name lookup.
+
+      Delegates to `DCATR.Service.Type.graph/2`.
       """
-      @impl DCATR.Catalog
       def graph(service, selector_or_id) do
         DCATR.Service.Type.graph(service, selector_or_id)
       end
 
       @doc """
-      Returns all graphs in the service.
+      Returns all graphs aggregated from repository and local_data catalogs.
 
-      This implementation of `c:DCATR.Catalog.graphs/2` delegates to
-      `DCATR.Service.Type.graphs/2`.
+      Delegates to `DCATR.Service.Type.graphs/1`.
       """
-      @impl DCATR.Catalog
-      def graphs(service, opts \\ []) do
-        DCATR.Service.Type.graphs(service, opts)
+      def graphs(service) do
+        DCATR.Service.Type.graphs(service)
       end
 
       @doc """
@@ -524,7 +521,7 @@ defmodule DCATR.Service.Type do
   end
 
   @doc """
-  Default implementation of `c:DCATR.Catalog.graph/2`.
+  Default implementation of `graph/2`.
 
   Tries selector resolution, then local name lookup, then ID lookup across Repository
   and ServiceData catalogs.
@@ -579,20 +576,16 @@ defmodule DCATR.Service.Type do
   end
 
   @doc """
-  Default implementation of `c:DCATR.Catalog.graphs/2`.
+  Default implementation of `graphs/1`.
 
-  Aggregates graphs from Repository and ServiceData catalogs, applying type filters when
-  specified.
+  Aggregates all graphs from Repository and ServiceData catalogs.
   """
-  @spec graphs(schema(), type: graph_type() | [graph_type()]) :: [DCATR.Graph.t()]
-  def graphs(
-        %{
-          repository: %repository_type{} = repository,
-          local_data: %service_data_type{} = local_data
-        },
-        opts \\ []
-      ) do
-    repository_type.graphs(repository, opts) ++ service_data_type.graphs(local_data, opts)
+  @spec graphs(schema()) :: [DCATR.Graph.t()]
+  def graphs(%{
+        repository: %repository_type{} = repository,
+        local_data: %service_data_type{} = local_data
+      }) do
+    repository_type.all_graphs(repository) ++ service_data_type.all_graphs(local_data)
   end
 
   @doc """

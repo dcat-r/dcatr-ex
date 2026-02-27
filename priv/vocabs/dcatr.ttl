@@ -16,11 +16,10 @@
 
 dcatr:Service a rdfs:Class, owl:Class
         ; rdfs:subClassOf dcat:DataService
-        ; owl:disjointWith dcatr:Repository, dcatr:Dataset
         ; rdfs:label "Service"
         ; rdfs:comment "A dcatr:Service represents the local configuration and runtime for accessing a dcatr:Repository. Multiple services can serve the same repository with different configurations."
 .
-    
+
     dcatr:serviceRepository a rdf:Property, owl:ObjectProperty, owl:FunctionalProperty
             ; rdfs:subPropertyOf dcat:servesDataset
             ; rdfs:domain dcatr:Service
@@ -57,14 +56,13 @@ This property enables flexible configuration: most single-graph repositories ben
 ##########################################################################
 
 dcatr:Repository a rdfs:Class, owl:Class
-        ; rdfs:subClassOf dcat:Catalog
-        ; owl:disjointWith dcatr:Service, dcatr:Dataset
+        ; rdfs:subClassOf dcat:Catalog, dcatr:Directory
         ; rdfs:label "Repository"
         ; rdfs:comment "Represents a DCAT-R repository, which is a DCAT catalog containing three components: 1) the dataset, 2) an implicit metadata graph and 3) potentially additional system graphs. The metadata graph contains the DCAT catalog description of the repository itself, including descriptions of the dataset and the system graphs."
 .
 
     dcatr:repositoryDataset a rdf:Property, owl:ObjectProperty, owl:FunctionalProperty
-            ; rdfs:subPropertyOf dcat:dataset
+            ; rdfs:subPropertyOf dcatr:directory
             ; rdfs:domain dcatr:Repository
             ; rdfs:range  dcatr:Dataset
             ; rdfs:label "repository dataset"
@@ -72,18 +70,18 @@ dcatr:Repository a rdfs:Class, owl:Class
     .
 
     dcatr:repositoryPrimaryGraph a rdf:Property, owl:ObjectProperty, owl:FunctionalProperty
-            ; rdfs:subPropertyOf dcat:dataset
+            ; rdfs:subPropertyOf dcatr:member
             ; rdfs:domain dcatr:Repository
             ; rdfs:range  dcatr:DataGraph
             ; rdfs:label "repository primary graph"
             ; rdfs:comment """Links repository to its primary graph.
-    
+
 Single-graph repositories: The only graph (shortcut, no dataset needed).
 Multi-graph repositories: Designates the primary graph (must also be listed in repositoryDataset/dataGraph)."""
     .
-    
+
     dcatr:repositorySystemGraph a rdf:Property, owl:ObjectProperty
-            ; rdfs:subPropertyOf dcat:dataset
+            ; rdfs:subPropertyOf dcatr:member
             ; rdfs:domain dcatr:Repository
             ; rdfs:range  dcatr:SystemGraph
             ; rdfs:label "repository system graph"
@@ -91,7 +89,7 @@ Multi-graph repositories: Designates the primary graph (must also be listed in r
     .
 
     dcatr:repositoryManifestGraph a rdf:Property, owl:ObjectProperty, owl:FunctionalProperty
-            ; rdfs:subPropertyOf dcat:dataset
+            ; rdfs:subPropertyOf dcatr:member
             ; rdfs:domain dcatr:Repository
             ; rdfs:range  dcatr:RepositoryManifestGraph
             ; rdfs:label "repository manifest"
@@ -104,14 +102,13 @@ Multi-graph repositories: Designates the primary graph (must also be listed in r
 ##########################################################################
 
 dcatr:ServiceData a rdfs:Class, owl:Class
-        ; rdfs:subClassOf dcat:Catalog
-        ; owl:disjointWith dcatr:Service, dcatr:Repository, dcatr:Dataset
+        ; rdfs:subClassOf dcat:Catalog, dcatr:Directory
         ; rdfs:label "Service Data"
         ; rdfs:comment "Local catalog for service-specific graphs that are not distributed with the repository. Usually instantiated as a blank node, but can have an explicit URI if needed."
 .
 
     dcatr:serviceManifestGraph a rdf:Property, owl:ObjectProperty, owl:FunctionalProperty
-            ; rdfs:subPropertyOf dcat:dataset
+            ; rdfs:subPropertyOf dcatr:member
             ; rdfs:domain dcatr:ServiceData
             ; rdfs:range  dcatr:ServiceManifestGraph
             ; rdfs:label "service manifest graph"
@@ -119,7 +116,7 @@ dcatr:ServiceData a rdfs:Class, owl:Class
     .
 
     dcatr:serviceWorkingGraph a rdf:Property, owl:ObjectProperty
-            ; rdfs:subPropertyOf dcat:dataset
+            ; rdfs:subPropertyOf dcatr:member
             ; rdfs:domain dcatr:ServiceData
             ; rdfs:range  dcatr:WorkingGraph
             ; rdfs:label "service working graph"
@@ -127,7 +124,7 @@ dcatr:ServiceData a rdfs:Class, owl:Class
     .
 
     dcatr:serviceSystemGraph a rdf:Property, owl:ObjectProperty
-            ; rdfs:subPropertyOf dcat:dataset
+            ; rdfs:subPropertyOf dcatr:member
             ; rdfs:domain dcatr:ServiceData
             ; rdfs:range  dcatr:SystemGraph
             ; rdfs:label "service system graph"
@@ -139,14 +136,13 @@ dcatr:ServiceData a rdfs:Class, owl:Class
 ##########################################################################
 
 dcatr:Dataset a rdfs:Class, owl:Class
-        ; rdfs:subClassOf dcat:Catalog
-        ; owl:disjointWith dcatr:Service, dcatr:Repository
+        ; rdfs:subClassOf dcat:Catalog, dcatr:Directory
         ; rdfs:label "Dataset"
-        ; rdfs:comment "Represents the RDF dataset within a DCAT-R repository. It is modeled as a DCAT catalog of graphs."
+        ; rdfs:comment "Represents the RDF dataset within a DCAT-R repository. As the root directory of the graph hierarchy, it is modeled as both a DCAT catalog and a DCATR Directory containing data graphs and nested directories."
 .
 
     dcatr:dataGraph a rdf:Property, owl:ObjectProperty
-            ; rdfs:subPropertyOf dcat:dataset
+            ; rdfs:subPropertyOf dcatr:member
             ; rdfs:domain dcatr:Dataset
             ; rdfs:range  dcatr:DataGraph
             ; rdfs:label "data graph"
@@ -159,7 +155,7 @@ dcatr:Dataset a rdfs:Class, owl:Class
 ##########################################################################
 
 dcatr:Graph a rdfs:Class, owl:Class
-        ; rdfs:subClassOf dcat:Dataset
+        ; rdfs:subClassOf dcat:Dataset, dcatr:Element
         ; rdfs:label "Graph"
         ; rdfs:comment "Abstract base class for all graphs in a DCAT-R repository. Every graph must belong to exactly one of the four concrete subclasses: DataGraph (user data), ManifestGraph (DCAT-R configuration), SystemGraph (system mechanisms), or WorkingGraph (temporary working areas)."
         ; owl:equivalentClass [
@@ -257,6 +253,39 @@ dcatr:SystemGraph a rdfs:Class, owl:Class
         ; rdfs:label "System Graph"
         ; rdfs:comment "Base class for system-specific operational graphs that implement repository mechanisms such as version history, indexes, or application-specific operational data. System graphs are distinct from manifest graphs (which contain configuration) and are typically distributed as part of the repository."
 .
+
+
+##########################################################################
+# Directory
+##########################################################################
+
+dcatr:Element a rdfs:Class, owl:Class
+        ; rdfs:subClassOf dcat:Resource
+        ; rdfs:label "Element"
+        ; rdfs:comment "Abstract base class for items that can be organized within a Directory. Both Graphs and Directories are Elements, enabling hierarchical containment."
+.
+
+dcatr:Directory a rdfs:Class, owl:Class
+        ; rdfs:subClassOf dcat:Catalog, dcatr:Element
+        ; rdfs:label "Directory"
+        ; rdfs:comment "A named collection of graphs and nested directories within a Dataset. Directories enable hierarchical organization of graphs, providing structure for navigation, scoped metadata, and targeted operations. Each directory can contain DataGraphs as members and nested Directories."
+.
+
+    dcatr:member a rdf:Property, owl:ObjectProperty
+            ; rdfs:subPropertyOf dcat:dataset
+            ; rdfs:domain dcatr:Directory
+            ; rdfs:range  dcatr:Element
+            ; rdfs:label "member"
+            ; rdfs:comment "Links a directory to an Element (Graph or Directory) that is a direct member of this directory."
+    .
+
+    dcatr:directory a rdf:Property, owl:ObjectProperty
+            ; rdfs:subPropertyOf dcatr:member
+            ; rdfs:domain dcatr:Directory
+            ; rdfs:range  dcatr:Directory
+            ; rdfs:label "directory"
+            ; rdfs:comment "Links a directory to a nested subdirectory."
+    .
 
 
 ##########################################################################

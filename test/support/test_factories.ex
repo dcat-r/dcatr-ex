@@ -71,6 +71,7 @@ defmodule DCATR.TestFactories do
   alias DCATR.{
     Repository,
     Dataset,
+    Directory,
     Service,
     ServiceData,
     DataGraph,
@@ -168,12 +169,35 @@ defmodule DCATR.TestFactories do
   end
 
   ###########################################################################
+  # Directory
+
+  def directory(opts \\ []) do
+    {id, opts} = Keyword.pop(opts, :id, generate_id("Directory"))
+
+    opts = Keyword.replace_lazy(opts, :members, expand_list(&data_graph/0))
+
+    case Directory.new(id, opts) do
+      {:ok, dir} -> dir
+      {:error, error} -> raise error
+    end
+  end
+
+  def example_directory(opts \\ []) do
+    id = Keyword.get(opts, :id, EX.Directory1)
+    members = Keyword.get(opts, :members, example_data_graphs())
+    directory(id: id, members: members)
+  end
+
+  ###########################################################################
   # Dataset
 
   def dataset(opts \\ []) do
     {id, opts} = Keyword.pop(opts, :id, generate_id("Dataset"))
 
-    opts = Keyword.replace_lazy(opts, :graphs, expand_list(&data_graph/0))
+    opts =
+      opts
+      |> Keyword.replace_lazy(:graphs, expand_list(&data_graph/0))
+      |> Keyword.replace_lazy(:directories, expand_list(&directory/0))
 
     case Dataset.new(id, opts) do
       {:ok, dataset} -> dataset

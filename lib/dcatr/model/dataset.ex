@@ -3,9 +3,9 @@ defmodule DCATR.Dataset do
   A catalog of the data graphs within a `DCATR.Repository`.
 
   Each repository contains exactly one such dataset as its primary data container,
-  modeled as a DCAT catalog of `DCATR.DataGraph`s.
-
-  Implements the `DCATR.Catalog` behaviour.
+  modeled as a DCAT catalog of `DCATR.DataGraph`s. As the root `DCATR.Directory`
+  of the graph hierarchy, it can also contain nested `DCATR.Directory`s for
+  hierarchical organization.
 
   ## Schema Mapping
 
@@ -32,13 +32,14 @@ defmodule DCATR.Dataset do
       entity = PROV.Entity.from(dataset)
   """
 
+  use DCATR.Directory.Type
   use DCATR.Catalog
-  use Grax.Schema
 
   import DCATR.Utils, only: [bang!: 2]
 
   schema DCATR.Dataset do
     link graphs: DCATR.dataGraph(), type: list_of(DCATR.DataGraph), depth: +1
+    link directories: DCATR.directory(), type: list_of(DCATR.Directory), depth: +1
   end
 
   def new(id, opts \\ []) do
@@ -49,25 +50,12 @@ defmodule DCATR.Dataset do
 
   def new!(id, opts \\ []), do: bang!(&new/2, [id, opts])
 
-  @doc """
-  Returns a `DCATR.DataGraph` by id.
-  """
-  @impl true
-  @spec graph(t(), RDF.IRI.coercible()) :: DCATR.DataGraph.t() | nil
-  def graph(%_dataset_type{graphs: graphs}, id) do
-    graph_id = RDF.coerce_graph_name(id)
-    Enum.find(graphs, fn graph -> graph.__id__ == graph_id end)
-  end
+  @impl DCATR.Directory.Type
+  def graphs(%_dataset{graphs: graphs}), do: graphs
 
-  @doc """
-  Returns all `DCATR.DataGraph`s in the dataset.
-  """
-  @impl true
-  @spec graphs(t(), keyword()) :: [DCATR.DataGraph.t()]
-  def graphs(%_dataset_type{graphs: graphs}, _opts \\ []), do: graphs
+  @impl DCATR.Directory.Type
+  def directories(%_dataset{directories: directories}), do: directories || []
 
-  @doc false
-  @impl true
-  @spec resolve_graph_selector(t(), DCATR.Catalog.selector()) :: :undefined
+  @impl DCATR.Catalog
   def resolve_graph_selector(_dataset, _selector), do: :undefined
 end

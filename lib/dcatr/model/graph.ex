@@ -37,7 +37,7 @@ defmodule DCATR.Graph do
 
   import DCATR.Utils, only: [bang!: 2]
 
-  schema DCATR.Graph do
+  schema DCATR.Graph < DCATR.Element do
   end
 
   def new(id, opts \\ []) do

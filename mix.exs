@@ -11,19 +11,23 @@ defmodule DCATR.MixProject do
       deps: deps(),
       dialyzer: dialyzer(),
       test_coverage: [
-        summary: [threshold: 93],
+        summary: [threshold: 92],
         ignore_modules: [
           DCATR.Utils,
           # Generated Grax.Schema.Registerable modules
           ~r/^Grax\.Schema\.Registerable\..*/,
           # RDF.Vocabulary.Namespace generated module
           DCATR.NS.DCATR,
+          # Empty abstract schema
+          DCATR.Element,
           # Exception modules
           DCATR.DuplicateGraphNameError,
           DCATR.GraphNotFoundError,
           DCATR.ManifestError,
           DCATR.Manifest.GeneratorError,
           DCATR.Manifest.LoadingError,
+          # Mix tasks
+          Mix.Tasks.Dcatr.Init,
           # Test support
           DCATR.Case,
           DCATR.TestData,

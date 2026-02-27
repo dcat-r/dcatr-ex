@@ -101,10 +101,10 @@ defmodule DCATR.Repository do
   end
 
   def on_validate(
-        %__MODULE__{dataset: %_{graphs: graphs}, primary_graph: %_{__id__: primary_id}},
+        %__MODULE__{dataset: %_{} = dataset, primary_graph: %_{__id__: primary_id}},
         _opts
       ) do
-    if Enum.any?(graphs, &(&1.__id__ == primary_id)) do
+    if dataset |> DCATR.Dataset.all_graphs() |> Enum.any?(&(&1.__id__ == primary_id)) do
       :ok
     else
       {:error, "primary_graph must be one of the dataset's graphs when both are present"}

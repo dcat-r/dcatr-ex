@@ -35,53 +35,44 @@ defmodule DCATR.Catalog do
 
   - `%DCATR.Graph{}` - Selector resolved successfully to a graph
   - `nil` - Selector is recognized but references no graph (e.g., `:primary` when no primary graph is defined)
-  - `:undefined` - Selector is not recognized by this implementation (enables delegation in catalog hierarchies)
+  - `:undefined` - Selector is not recognized by this implementation (enables delegation in hierarchies)
 
   Implementations should only handle their own selectors and return `:undefined` for unknown ones.
   """
   @callback resolve_graph_selector(catalog :: schema(), selector()) ::
               DCATR.Graph.t() | nil | :undefined
 
-  @doc """
-  Returns a graph by ID or symbolic selector.
-
-  This callback is the primary graph access API for all catalog types, enabling
-  unified graph retrieval while allowing custom resolution logic.
-
-  Implementations should delegate to `c:resolve_graph_selector/2` for symbolic selectors,
-  then search by graph ID, returning `nil` if no match is found.
-  """
-  @callback graph(catalog :: schema(), id_or_selector()) :: DCATR.Graph.t() | nil
-
-  @doc """
-  Returns all graphs in the catalog.
-
-  This callback provides bulk access to the catalog's graph collection, enabling
-  iteration and type-based filtering.
-
-  Implementations should return a flat list of all graphs by default, and support
-  `:type` filtering for graph type subsets (e.g., `:data`, `:system`, `:manifest`).
-
-  ## Options
-
-  - `:type` - Filter by graph type (atom or list of atoms, catalog-specific)
-  """
-  @callback graphs(catalog :: schema(), opts :: keyword()) :: [DCATR.Graph.t()]
-
   defmacro __using__(_) do
     quote do
       @behaviour DCATR.Catalog
 
       @doc """
+      Returns a graph by ID or symbolic selector.
+
+      Tries `resolve_graph_selector/2` first. On `:undefined`, falls back to
+      `find_graph/2` (from `DCATR.Directory.Type`) for ID-based lookup.
+      """
+      @spec graph(DCATR.Catalog.schema(), DCATR.Catalog.id_or_selector()) ::
+              DCATR.Graph.t() | nil
+      def graph(catalog, id_or_selector) do
+        case resolve_graph_selector(catalog, id_or_selector) do
+          :undefined -> find_graph(catalog, RDF.coerce_graph_name(id_or_selector))
+          result -> result
+        end
+      end
+
+      @doc """
       Checks if a graph exists in the catalog.
 
-      Convenience function based on `c:DCATR.Catalog.graph/2` - returns `true` if the graph exists,
+      Convenience function based on `graph/2` - returns `true` if the graph exists,
       `false` otherwise.
       """
       @spec has_graph?(DCATR.Catalog.schema(), DCATR.Catalog.id_or_selector()) :: boolean()
       def has_graph?(catalog, id_or_selector) do
         graph(catalog, id_or_selector) != nil
       end
+
+      defoverridable graph: 2, has_graph?: 2
     end
   end
 end

@@ -1,0 +1,94 @@
+@prefix dcatr: <https://w3id.org/dcatr#> .
+@prefix dcat:  <http://www.w3.org/ns/dcat#> .
+@prefix ex:    <http://example.org/> .
+
+# Scenario 7: Dataset with Directory Hierarchy
+# =============================================
+# This example demonstrates hierarchical graph organization using directories.
+# The dataset contains both direct data graphs and nested directories:
+#
+# dataset/
+# ├── outline (direct DataGraph, also primary)
+# ├── input/ (Directory)
+# │   ├── source-data (DataGraph)
+# │   └── mapping-data (DataGraph)
+# └── derived/ (Directory)
+#     └── results (DataGraph)
+#
+# Directories use dcatr:member for their contents, while the dataset uses
+# the specific properties dcatr:dataGraph and dcatr:directory.
+
+################################################################################
+# MANIFEST GRAPHS (Configuration/Metadata)
+################################################################################
+
+# Service Manifest Graph (local configuration)
+_:service-manifest {
+    ex:myService a dcatr:Service ;
+        dcatr:serviceRepository ex:myRepository .
+}
+
+# Repository Manifest Graph
+_:repository-manifest {
+    ex:myRepository a dcatr:Repository ;
+        dcatr:repositoryPrimaryGraph ex:outline ;
+        dcatr:repositoryDataset ex:myDataset ;
+        dcatr:repositoryManifestGraph ex:repository-manifest .
+
+    ex:repository-manifest a dcatr:RepositoryManifestGraph ;
+        dcat:title "Repository Metadata" .
+
+    # Dataset with direct graph and directories
+    ex:myDataset a dcatr:Dataset ;
+        dcatr:dataGraph ex:outline ;
+        dcatr:directory ex:input ,
+                        ex:derived .
+
+    # Direct data graph (also primary)
+    ex:outline a dcatr:DataGraph ;
+        dcat:title "Knowledge Base Outline" ;
+        dcat:description "Top-level structure and overview of the knowledge base" .
+
+    # Input directory with source data
+    ex:input a dcatr:Directory ;
+        dcat:title "Input Sources" ;
+        dcatr:member ex:source-data ,
+                     ex:mapping-data .
+
+    ex:source-data a dcatr:DataGraph ;
+        dcat:title "Source Data" ;
+        dcat:description "Raw source data imported into the knowledge base" .
+
+    ex:mapping-data a dcatr:DataGraph ;
+        dcat:title "Mapping Data" ;
+        dcat:description "Mappings between source schemas and target ontology" .
+
+    # Derived directory with computed results
+    ex:derived a dcatr:Directory ;
+        dcat:title "Derived Data" ;
+        dcatr:member ex:results .
+
+    ex:results a dcatr:DataGraph ;
+        dcat:title "Computed Results" ;
+        dcat:description "Data derived from processing input sources" .
+}
+
+################################################################################
+# USER DATA GRAPHS (Illustrative Examples)
+################################################################################
+
+ex:outline {
+    # Overview structure would be here
+}
+
+ex:source-data {
+    # Raw source data would be here
+}
+
+ex:mapping-data {
+    # Schema mappings would be here
+}
+
+ex:results {
+    # Computed results would be here
+}

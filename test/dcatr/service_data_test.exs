@@ -154,10 +154,10 @@ defmodule DCATR.ServiceDataTest do
     assert ServiceData.resolve_graph_selector(service_data, :unknown_selector) == :undefined
   end
 
-  describe "graphs/2" do
+  describe "graphs/1" do
     setup :example_service_data_scenario
 
-    test "returns all graphs without options", %{
+    test "returns all graphs", %{
       service_data: service_data,
       service_manifest: manifest,
       working_graphs: [working1, working2],
@@ -171,67 +171,8 @@ defmodule DCATR.ServiceDataTest do
       assert system1 in graphs
     end
 
-    test "filters by type :manifest", %{service_data: service_data, service_manifest: manifest} do
-      assert ServiceData.graphs(service_data, type: :manifest) == [manifest]
-    end
-
-    test "filters by type :working", %{service_data: service_data, working_graphs: working_graphs} do
-      assert ServiceData.graphs(service_data, type: :working) == working_graphs
-    end
-
-    test "filters by type :system", %{service_data: service_data, local_system_graphs: system} do
-      assert ServiceData.graphs(service_data, type: :system) == system
-    end
-
     test "handles ServiceData with only manifest", %{service_manifest: manifest} do
       assert service_data(manifest_graph: manifest) |> ServiceData.graphs() == [manifest]
-    end
-
-    test "filters by multiple types", %{
-      service_data: service_data,
-      service_manifest: manifest,
-      working_graphs: [working1, working2],
-      local_system_graphs: [system1]
-    } do
-      graphs = ServiceData.graphs(service_data, type: [:manifest, :working])
-      assert length(graphs) == 3
-      assert manifest in graphs
-      assert working1 in graphs
-      assert working2 in graphs
-      refute system1 in graphs
-
-      graphs = ServiceData.graphs(service_data, type: [:working, :system])
-      assert length(graphs) == 3
-      assert working1 in graphs
-      assert working2 in graphs
-      assert system1 in graphs
-      refute manifest in graphs
-
-      graphs = ServiceData.graphs(service_data, type: [:manifest, :working, :system])
-      assert length(graphs) == 4
-      assert manifest in graphs
-      assert working1 in graphs
-      assert working2 in graphs
-      assert system1 in graphs
-    end
-
-    test "handles empty list of types", %{service_data: service_data} do
-      assert ServiceData.graphs(service_data, type: []) == []
-    end
-
-    test "handles list with unknown types", %{service_data: service_data} do
-      assert ServiceData.graphs(service_data, type: [:unknown, :invalid]) == []
-    end
-
-    test "handles mixed valid and invalid types in list", %{
-      service_data: service_data,
-      service_manifest: manifest
-    } do
-      assert ServiceData.graphs(service_data, type: [:manifest, :unknown]) == [manifest]
-    end
-
-    test "returns empty list for unknown type filter", %{service_data: service_data} do
-      assert ServiceData.graphs(service_data, type: :unknown) == []
     end
   end
 

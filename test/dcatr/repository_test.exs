@@ -360,80 +360,60 @@ defmodule DCATR.RepositoryTest do
     end
   end
 
-  describe "graphs/2" do
+  describe "members/1" do
     setup :example_repository_scenario
 
-    test "returns all graphs without options", %{
+    test "returns dataset, manifest, and system graphs as direct members", %{
       repo: repo,
-      data_graphs: [data_graph1, data_graph2],
+      repo_manifest: repo_manifest,
+      system_graphs: [system_graph1, system_graph2]
+    } do
+      members = Repository.members(repo)
+      assert length(members) == 4
+      assert repo.dataset in members
+      assert repo_manifest in members
+      assert system_graph1 in members
+      assert system_graph2 in members
+    end
+
+    test "includes primary graph in single-graph mode" do
+      primary_graph = data_graph()
+      repo = single_graph_repository(primary_graph: primary_graph)
+
+      members = Repository.members(repo)
+      assert primary_graph in members
+      assert repo.manifest_graph in members
+    end
+
+    test "excludes primary graph in dual-use mode (reached via dataset)" do
+      primary_graph = data_graph()
+      other_graph = data_graph()
+      ds = dataset(graphs: [primary_graph, other_graph])
+      repo = multi_graph_with_primary_repository(dataset: ds, primary_graph: primary_graph)
+
+      members = Repository.members(repo)
+      assert repo.dataset in members
+      assert repo.manifest_graph in members
+      refute primary_graph in members
+    end
+  end
+
+  describe "graphs/1" do
+    setup :example_repository_scenario
+
+    test "returns direct graph members (manifest + system graphs)", %{
+      repo: repo,
       repo_manifest: repo_manifest,
       system_graphs: [system_graph1, system_graph2]
     } do
       graphs = Repository.graphs(repo)
-      assert length(graphs) == 5
-      assert data_graph1 in graphs
-      assert data_graph2 in graphs
-      assert repo_manifest in graphs
-      assert system_graph1 in graphs
-      assert system_graph2 in graphs
-    end
-
-    test "filters by type :data", %{repo: repo, data_graphs: data_graphs} do
-      assert Repository.graphs(repo, type: :data) == data_graphs
-    end
-
-    test "filters by type :system", %{repo: repo, system_graphs: system_graphs} do
-      assert Repository.graphs(repo, type: :system) == system_graphs
-    end
-
-    test "filters by type :manifest", %{repo: repo, repo_manifest: repo_manifest} do
-      assert Repository.graphs(repo, type: :manifest) == [repo_manifest]
-    end
-
-    test "returns empty list for unknown type filter", %{repo: repo} do
-      assert Repository.graphs(repo, type: :unknown) == []
-    end
-
-    test "filters by multiple types as list", %{
-      repo: repo,
-      data_graphs: [data_graph1, data_graph2],
-      system_graphs: [system_graph1, system_graph2],
-      repo_manifest: repo_manifest
-    } do
-      graphs = Repository.graphs(repo, type: [:data, :system])
-      assert length(graphs) == 4
-      assert data_graph1 in graphs
-      assert data_graph2 in graphs
-      assert system_graph1 in graphs
-      assert system_graph2 in graphs
-      refute repo_manifest in graphs
-    end
-
-    test "filters by multiple types including manifest", %{
-      repo: repo,
-      repo_manifest: repo_manifest,
-      system_graphs: [system_graph1, system_graph2]
-    } do
-      graphs = Repository.graphs(repo, type: [:manifest, :system])
       assert length(graphs) == 3
       assert repo_manifest in graphs
       assert system_graph1 in graphs
       assert system_graph2 in graphs
     end
 
-    test "handles empty list of types", %{repo: repo} do
-      assert Repository.graphs(repo, type: []) == []
-    end
-
-    test "handles list with unknown types", %{repo: repo} do
-      assert Repository.graphs(repo, type: [:unknown, :invalid]) == []
-    end
-
-    test "handles mixed valid and invalid types", %{repo: repo, repo_manifest: repo_manifest} do
-      assert Repository.graphs(repo, type: [:manifest, :unknown]) == [repo_manifest]
-    end
-
-    test "returns all graphs in single-graph mode" do
+    test "includes primary graph in single-graph mode" do
       primary_graph = data_graph()
       system_graph = system_graph()
       repo = single_graph_repository(primary_graph: primary_graph, system_graphs: [system_graph])
@@ -445,38 +425,72 @@ defmodule DCATR.RepositoryTest do
       assert system_graph in graphs
     end
 
-    test "returns no duplicates in dual-use mode" do
+    test "excludes primary graph in dual-use mode (reached via dataset traversal)" do
       primary_graph = data_graph()
       other_graph = data_graph()
       ds = dataset(graphs: [primary_graph, other_graph])
       repo = multi_graph_with_primary_repository(dataset: ds, primary_graph: primary_graph)
 
       graphs = Repository.graphs(repo)
+      assert length(graphs) == 1
+      assert repo.manifest_graph in graphs
+    end
+  end
+
+  describe "directories/1" do
+    test "returns dataset as sole directory" do
+      repo = example_repository()
+      assert Repository.directories(repo) == [repo.dataset]
+    end
+
+    test "returns empty list in single-graph mode" do
+      repo = single_graph_repository(primary_graph: data_graph())
+      assert Repository.directories(repo) == []
+    end
+  end
+
+  describe "all_graphs/1" do
+    setup :example_repository_scenario
+
+    test "returns all graphs recursively", %{
+      repo: repo,
+      data_graphs: [data_graph1, data_graph2],
+      repo_manifest: repo_manifest,
+      system_graphs: [system_graph1, system_graph2]
+    } do
+      graphs = Repository.all_graphs(repo)
+      assert length(graphs) == 5
+      assert data_graph1 in graphs
+      assert data_graph2 in graphs
+      assert repo_manifest in graphs
+      assert system_graph1 in graphs
+      assert system_graph2 in graphs
+    end
+
+    test "returns all graphs in single-graph mode" do
+      primary_graph = data_graph()
+      system_graph = system_graph()
+      repo = single_graph_repository(primary_graph: primary_graph, system_graphs: [system_graph])
+
+      graphs = Repository.all_graphs(repo)
       assert length(graphs) == 3
       assert repo.manifest_graph in graphs
       assert primary_graph in graphs
-      assert other_graph in graphs
-      assert Enum.count(graphs, &(&1.__id__ == primary_graph.__id__)) == 1
+      assert system_graph in graphs
     end
 
-    test "filters by type :data in single-graph mode" do
-      primary_graph = data_graph()
-      repo = single_graph_repository(primary_graph: primary_graph)
-
-      assert Repository.graphs(repo, type: :data) == [primary_graph]
-    end
-
-    test "filters by type :data in dual-use mode without duplicates" do
+    test "returns all graphs without duplicates in dual-use mode" do
       primary_graph = data_graph()
       other_graph = data_graph()
       ds = dataset(graphs: [primary_graph, other_graph])
       repo = multi_graph_with_primary_repository(dataset: ds, primary_graph: primary_graph)
 
-      data_graphs = Repository.graphs(repo, type: :data)
-      assert length(data_graphs) == 2
-      assert primary_graph in data_graphs
-      assert other_graph in data_graphs
-      assert Enum.count(data_graphs, &(&1.__id__ == primary_graph.__id__)) == 1
+      graphs = Repository.all_graphs(repo)
+      assert length(graphs) == 3
+      assert repo.manifest_graph in graphs
+      assert primary_graph in graphs
+      assert other_graph in graphs
+      assert Enum.count(graphs, &(&1.__id__ == primary_graph.__id__)) == 1
     end
   end
 
