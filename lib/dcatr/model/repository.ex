@@ -87,13 +87,13 @@ defmodule DCATR.Repository do
     link system_graphs: DCATR.repositorySystemGraph(), type: list_of(DCATR.SystemGraph), depth: +1
   end
 
-  def new(id, opts \\ []) do
-    with {:ok, struct} <- build(id, opts) do
+  def new(id, attrs) do
+    with {:ok, struct} <- build(id, attrs) do
       Grax.validate(struct)
     end
   end
 
-  def new!(id, opts \\ []), do: bang!(&new/2, [id, opts])
+  def new!(id, attrs), do: bang!(&new/2, [id, attrs])
 
   @impl true
   def on_validate(%__MODULE__{dataset: nil, primary_graph: nil}, _opts) do

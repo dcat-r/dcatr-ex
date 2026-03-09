@@ -35,11 +35,11 @@ defmodule DCATR.ServiceData do
     link system_graphs: DCATR.serviceSystemGraph(), type: list_of(DCATR.SystemGraph), depth: +1
   end
 
-  def new(id, opts \\ []) do
-    with {:ok, struct} <- build(id, opts) do
+  def new(id, attrs) do
+    with {:ok, struct} <- build(id, attrs) do
       Grax.validate(struct)
     end
   end
 
-  def new!(id, opts \\ []), do: bang!(&new/2, [id, opts])
+  def new!(id, attrs), do: bang!(&new/2, [id, attrs])
 end

@@ -42,13 +42,13 @@ defmodule DCATR.Dataset do
     link directories: DCATR.directory(), type: list_of(DCATR.Directory), depth: +1
   end
 
-  def new(id, opts \\ []) do
-    with {:ok, struct} <- build(id, opts) do
+  def new(id, attrs \\ []) do
+    with {:ok, struct} <- build(id, attrs) do
       Grax.validate(struct)
     end
   end
 
-  def new!(id, opts \\ []), do: bang!(&new/2, [id, opts])
+  def new!(id, attrs \\ []), do: bang!(&new/2, [id, attrs])
 
   @impl DCATR.Directory.Type
   def graphs(%_dataset{graphs: graphs}), do: graphs
