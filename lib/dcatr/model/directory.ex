@@ -24,6 +24,8 @@ defmodule DCATR.Directory do
 
   use DCATR.Directory.Type
 
+  alias DCATR.Directory.LoadHelper
+
   import DCATR.Utils, only: [bang!: 2]
 
   schema DCATR.Directory < DCATR.Element do
@@ -40,4 +42,12 @@ defmodule DCATR.Directory do
 
   # Override generated members/1 for direct field access to avoid double-filtering
   def members(%__MODULE__{members: members}), do: members
+
+  @impl true
+  def on_load(%__MODULE__{} = directory, %RDF.Graph{} = graph, _opts) do
+    LoadHelper.normalize_from_sub_properties(directory, graph)
+  end
+
+  def on_load(_directory, _description, _opts),
+    do: raise(ArgumentError, "on_load requires an RDF.Graph, not an RDF.Description")
 end

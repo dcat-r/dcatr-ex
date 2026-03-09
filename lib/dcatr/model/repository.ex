@@ -72,6 +72,8 @@ defmodule DCATR.Repository do
 
   use DCATR.Repository.Type
 
+  alias DCATR.Directory.LoadHelper
+
   import DCATR.Utils, only: [bang!: 2]
 
   schema DCATR.Repository do
@@ -112,4 +114,29 @@ defmodule DCATR.Repository do
   end
 
   def on_validate(_repo, _opts), do: :ok
+
+  @impl true
+  def on_load(%__MODULE__{} = repo, %RDF.Graph{} = graph, _opts) do
+    LoadHelper.normalize_members(repo, graph, fn member, acc ->
+      cond do
+        Grax.Schema.inherited_from?(member, DCATR.Dataset) ->
+          LoadHelper.assign_singular(acc, :dataset, member)
+
+        Grax.Schema.inherited_from?(member, DCATR.RepositoryManifestGraph) ->
+          LoadHelper.assign_singular(acc, :manifest_graph, member)
+
+        Grax.Schema.inherited_from?(member, DCATR.DataGraph) ->
+          LoadHelper.assign_singular(acc, :primary_graph, member)
+
+        Grax.Schema.inherited_from?(member, DCATR.SystemGraph) ->
+          {:ok, %{acc | system_graphs: [member | acc.system_graphs]}}
+
+        true ->
+          {:ok, acc}
+      end
+    end)
+  end
+
+  def on_load(_repo, _description, _opts),
+    do: raise(ArgumentError, "on_load requires an RDF.Graph, not an RDF.Description")
 end

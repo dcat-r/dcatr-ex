@@ -179,6 +179,144 @@ defmodule DCATR.RepositoryTest do
       assert loaded_repo.dataset.__id__ == RDF.iri(EX.Dataset1)
       assert length(loaded_repo.dataset.graphs) == 2
     end
+
+    test "Dataset linked via dcatr:member populates dataset" do
+      graph =
+        RDF.graph([
+          {EX.DataGraph1, RDF.type(), DCATR.DataGraph},
+          {EX.Dataset1, RDF.type(), DCATR.Dataset},
+          {EX.Dataset1, DCATR.dataGraph(), EX.DataGraph1},
+          {EX.RepositoryManifest, RDF.type(), DCATR.RepositoryManifestGraph},
+          {EX.Repository1, RDF.type(), DCATR.Repository},
+          {EX.Repository1, DCATR.repositoryManifestGraph(), EX.RepositoryManifest},
+          {EX.Repository1, DCATR.member(), EX.Dataset1}
+        ])
+
+      {:ok, loaded} = Repository.load(graph, EX.Repository1, depth: 2)
+
+      assert loaded.dataset.__id__ == RDF.iri(EX.Dataset1)
+      assert length(loaded.dataset.graphs) == 1
+      assert hd(loaded.dataset.graphs).__id__ == RDF.iri(EX.DataGraph1)
+    end
+
+    test "RepositoryManifestGraph linked via dcatr:member populates manifest_graph" do
+      graph =
+        RDF.graph([
+          {EX.DataGraph1, RDF.type(), DCATR.DataGraph},
+          {EX.Dataset1, RDF.type(), DCATR.Dataset},
+          {EX.Dataset1, DCATR.dataGraph(), EX.DataGraph1},
+          {EX.RepositoryManifest, RDF.type(), DCATR.RepositoryManifestGraph},
+          {EX.Repository1, RDF.type(), DCATR.Repository},
+          {EX.Repository1, DCATR.repositoryDataset(), EX.Dataset1},
+          {EX.Repository1, DCATR.member(), EX.RepositoryManifest}
+        ])
+
+      {:ok, loaded} = Repository.load(graph, EX.Repository1, depth: 2)
+
+      assert loaded.manifest_graph.__id__ == RDF.iri(EX.RepositoryManifest)
+    end
+
+    test "SystemGraph linked via dcatr:member added to system_graphs" do
+      graph =
+        RDF.graph([
+          {EX.DataGraph1, RDF.type(), DCATR.DataGraph},
+          {EX.Dataset1, RDF.type(), DCATR.Dataset},
+          {EX.Dataset1, DCATR.dataGraph(), EX.DataGraph1},
+          {EX.RepositoryManifest, RDF.type(), DCATR.RepositoryManifestGraph},
+          {EX.SystemGraph1, RDF.type(), DCATR.SystemGraph},
+          {EX.Repository1, RDF.type(), DCATR.Repository},
+          {EX.Repository1, DCATR.repositoryDataset(), EX.Dataset1},
+          {EX.Repository1, DCATR.repositoryManifestGraph(), EX.RepositoryManifest},
+          {EX.Repository1, DCATR.member(), EX.SystemGraph1}
+        ])
+
+      {:ok, loaded} = Repository.load(graph, EX.Repository1, depth: 2)
+
+      assert length(loaded.system_graphs) == 1
+      assert hd(loaded.system_graphs).__id__ == RDF.iri(EX.SystemGraph1)
+    end
+
+    test "DataGraph linked via dcatr:member added to primary_graph" do
+      graph =
+        RDF.graph([
+          {EX.DataGraph1, RDF.type(), DCATR.DataGraph},
+          {EX.RepositoryManifest, RDF.type(), DCATR.RepositoryManifestGraph},
+          {EX.Repository1, RDF.type(), DCATR.Repository},
+          {EX.Repository1, DCATR.repositoryManifestGraph(), EX.RepositoryManifest},
+          {EX.Repository1, DCATR.member(), EX.DataGraph1}
+        ])
+
+      {:ok, loaded} = Repository.load(graph, EX.Repository1, depth: 1)
+      assert loaded.primary_graph.__id__ == RDF.iri(EX.DataGraph1)
+    end
+
+    test "mixed: some via specific properties, some via dcatr:member" do
+      graph =
+        RDF.graph([
+          {EX.DataGraph1, RDF.type(), DCATR.DataGraph},
+          {EX.DataGraph2, RDF.type(), DCATR.DataGraph},
+          {EX.Dataset1, RDF.type(), DCATR.Dataset},
+          {EX.Dataset1, DCATR.dataGraph(), [EX.DataGraph1, EX.DataGraph2]},
+          {EX.RepositoryManifest, RDF.type(), DCATR.RepositoryManifestGraph},
+          {EX.SystemGraph1, RDF.type(), DCATR.SystemGraph},
+          {EX.SystemGraph2, RDF.type(), DCATR.SystemGraph},
+          {EX.Repository1, RDF.type(), DCATR.Repository},
+          {EX.Repository1, DCATR.repositoryDataset(), EX.Dataset1},
+          {EX.Repository1, DCATR.repositoryManifestGraph(), EX.RepositoryManifest},
+          {EX.Repository1, DCATR.repositorySystemGraph(), EX.SystemGraph1},
+          {EX.Repository1, DCATR.member(), [EX.SystemGraph1, EX.SystemGraph2]}
+        ])
+
+      {:ok, loaded} = Repository.load(graph, EX.Repository1, depth: 99)
+
+      assert loaded.dataset.__id__ == RDF.iri(EX.Dataset1)
+      assert loaded.manifest_graph.__id__ == RDF.iri(EX.RepositoryManifest)
+      assert length(loaded.system_graphs) == 2
+
+      system_ids = Enum.map(loaded.system_graphs, & &1.__id__) |> MapSet.new()
+
+      assert MapSet.equal?(
+               system_ids,
+               MapSet.new([RDF.iri(EX.SystemGraph1), RDF.iri(EX.SystemGraph2)])
+             )
+    end
+
+    test "raises ArgumentError when loading from RDF.Description" do
+      desc = RDF.description(EX.Repository1, init: {EX.Repository1, RDF.type(), DCATR.Repository})
+      assert_raise ArgumentError, fn -> Repository.load(desc, EX.Repository1) end
+    end
+
+    test "returns CardinalityError when different Dataset linked via dcatr:member and dcatr:repositoryDataset" do
+      graph =
+        RDF.graph([
+          {EX.Dataset1, RDF.type(), DCATR.Dataset},
+          {EX.Dataset2, RDF.type(), DCATR.Dataset},
+          {EX.RepositoryManifest, RDF.type(), DCATR.RepositoryManifestGraph},
+          {EX.Repository1, RDF.type(), DCATR.Repository},
+          {EX.Repository1, DCATR.repositoryDataset(), EX.Dataset1},
+          {EX.Repository1, DCATR.repositoryManifestGraph(), EX.RepositoryManifest},
+          {EX.Repository1, DCATR.member(), EX.Dataset2}
+        ])
+
+      assert {:error, %Grax.Schema.CardinalityError{}} =
+               Repository.load(graph, EX.Repository1, depth: 2)
+    end
+
+    test "returns CardinalityError when different ManifestGraph linked via dcatr:member and dcatr:repositoryManifestGraph" do
+      graph =
+        RDF.graph([
+          {EX.Dataset1, RDF.type(), DCATR.Dataset},
+          {EX.RepositoryManifest1, RDF.type(), DCATR.RepositoryManifestGraph},
+          {EX.RepositoryManifest2, RDF.type(), DCATR.RepositoryManifestGraph},
+          {EX.Repository1, RDF.type(), DCATR.Repository},
+          {EX.Repository1, DCATR.repositoryDataset(), EX.Dataset1},
+          {EX.Repository1, DCATR.repositoryManifestGraph(), EX.RepositoryManifest1},
+          {EX.Repository1, DCATR.member(), EX.RepositoryManifest2}
+        ])
+
+      assert {:error, %Grax.Schema.CardinalityError{}} =
+               Repository.load(graph, EX.Repository1, depth: 2)
+    end
   end
 
   describe "Grax.to_rdf/1" do

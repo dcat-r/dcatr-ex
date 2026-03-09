@@ -23,6 +23,8 @@ defmodule DCATR.ServiceData do
 
   use DCATR.ServiceData.Type
 
+  alias DCATR.Directory.LoadHelper
+
   import DCATR.Utils, only: [bang!: 2]
 
   schema DCATR.ServiceData do
@@ -42,4 +44,26 @@ defmodule DCATR.ServiceData do
   end
 
   def new!(id, attrs), do: bang!(&new/2, [id, attrs])
+
+  @impl true
+  def on_load(%__MODULE__{} = service_data, %RDF.Graph{} = graph, _opts) do
+    LoadHelper.normalize_members(service_data, graph, fn member, acc ->
+      cond do
+        Grax.Schema.inherited_from?(member, DCATR.ServiceManifestGraph) ->
+          LoadHelper.assign_singular(acc, :manifest_graph, member)
+
+        Grax.Schema.inherited_from?(member, DCATR.WorkingGraph) ->
+          {:ok, %{acc | working_graphs: [member | acc.working_graphs]}}
+
+        Grax.Schema.inherited_from?(member, DCATR.SystemGraph) ->
+          {:ok, %{acc | system_graphs: [member | acc.system_graphs]}}
+
+        true ->
+          {:ok, acc}
+      end
+    end)
+  end
+
+  def on_load(_service_data, _description, _opts),
+    do: raise(ArgumentError, "on_load requires an RDF.Graph, not an RDF.Description")
 end

@@ -82,6 +82,93 @@ defmodule DCATR.ServiceDataTest do
              ])
              |> ServiceData.load(EX.ServiceData1, depth: 99) == {:ok, example_service_data()}
     end
+
+    test "WorkingGraph linked via dcatr:member appears in working_graphs" do
+      graph =
+        RDF.graph([
+          {~B<ServiceManifest>, RDF.type(), DCATR.ServiceManifestGraph},
+          {~B<WorkingGraph1>, RDF.type(), DCATR.WorkingGraph},
+          {EX.ServiceData1, RDF.type(), DCATR.ServiceData},
+          {EX.ServiceData1, DCATR.serviceManifestGraph(), ~B<ServiceManifest>},
+          {EX.ServiceData1, DCATR.member(), ~B<WorkingGraph1>}
+        ])
+
+      {:ok, loaded} = ServiceData.load(graph, EX.ServiceData1, depth: 99)
+
+      assert length(loaded.working_graphs) == 1
+      assert hd(loaded.working_graphs).__id__ == ~B<WorkingGraph1>
+    end
+
+    test "SystemGraph linked via dcatr:member appears in system_graphs" do
+      graph =
+        RDF.graph([
+          {~B<ServiceManifest>, RDF.type(), DCATR.ServiceManifestGraph},
+          {EX.LocalSystemGraph, RDF.type(), DCATR.SystemGraph},
+          {EX.ServiceData1, RDF.type(), DCATR.ServiceData},
+          {EX.ServiceData1, DCATR.serviceManifestGraph(), ~B<ServiceManifest>},
+          {EX.ServiceData1, DCATR.member(), EX.LocalSystemGraph}
+        ])
+
+      {:ok, loaded} = ServiceData.load(graph, EX.ServiceData1, depth: 99)
+
+      assert length(loaded.system_graphs) == 1
+      assert hd(loaded.system_graphs).__id__ == RDF.iri(EX.LocalSystemGraph)
+    end
+
+    test "ServiceManifestGraph linked via dcatr:member populates manifest_graph" do
+      graph =
+        RDF.graph([
+          {~B<ServiceManifest>, RDF.type(), DCATR.ServiceManifestGraph},
+          {EX.ServiceData1, RDF.type(), DCATR.ServiceData},
+          {EX.ServiceData1, DCATR.member(), ~B<ServiceManifest>}
+        ])
+
+      {:ok, loaded} = ServiceData.load(graph, EX.ServiceData1, depth: 99)
+
+      assert loaded.manifest_graph.__id__ == ~B<ServiceManifest>
+    end
+
+    test "mixed: some via specific properties, some via dcatr:member" do
+      graph =
+        RDF.graph([
+          {~B<ServiceManifest>, RDF.type(), DCATR.ServiceManifestGraph},
+          {~B<WorkingGraph1>, RDF.type(), DCATR.WorkingGraph},
+          {~B<WorkingGraph2>, RDF.type(), DCATR.WorkingGraph},
+          {EX.LocalSystemGraph, RDF.type(), DCATR.SystemGraph},
+          {EX.ServiceData1, RDF.type(), DCATR.ServiceData},
+          {EX.ServiceData1, DCATR.serviceManifestGraph(), ~B<ServiceManifest>},
+          {EX.ServiceData1, DCATR.serviceWorkingGraph(), ~B<WorkingGraph1>},
+          {EX.ServiceData1, DCATR.member(),
+           [~B<WorkingGraph1>, ~B<WorkingGraph2>, EX.LocalSystemGraph]}
+        ])
+
+      {:ok, loaded} = ServiceData.load(graph, EX.ServiceData1, depth: 99)
+
+      assert loaded.manifest_graph.__id__ == ~B<ServiceManifest>
+      assert length(loaded.working_graphs) == 2
+      assert length(loaded.system_graphs) == 1
+    end
+
+    test "raises ArgumentError when loading from RDF.Description" do
+      desc =
+        RDF.description(EX.ServiceData1, init: {EX.ServiceData1, RDF.type(), DCATR.ServiceData})
+
+      assert_raise ArgumentError, fn -> ServiceData.load(desc, EX.ServiceData1) end
+    end
+
+    test "returns CardinalityError when different ManifestGraph linked via dcatr:member and dcatr:serviceManifestGraph" do
+      graph =
+        RDF.graph([
+          {~B<ServiceManifest1>, RDF.type(), DCATR.ServiceManifestGraph},
+          {~B<ServiceManifest2>, RDF.type(), DCATR.ServiceManifestGraph},
+          {EX.ServiceData1, RDF.type(), DCATR.ServiceData},
+          {EX.ServiceData1, DCATR.serviceManifestGraph(), ~B<ServiceManifest1>},
+          {EX.ServiceData1, DCATR.member(), ~B<ServiceManifest2>}
+        ])
+
+      assert {:error, %Grax.Schema.CardinalityError{}} =
+               ServiceData.load(graph, EX.ServiceData1, depth: 99)
+    end
   end
 
   test "Grax.to_rdf/1" do

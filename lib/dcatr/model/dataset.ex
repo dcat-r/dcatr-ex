@@ -35,6 +35,8 @@ defmodule DCATR.Dataset do
   use DCATR.Directory.Type
   use DCATR.Catalog
 
+  alias DCATR.Directory.LoadHelper
+
   import DCATR.Utils, only: [bang!: 2]
 
   schema DCATR.Dataset do
@@ -58,4 +60,16 @@ defmodule DCATR.Dataset do
 
   @impl DCATR.Catalog
   def resolve_graph_selector(_dataset, _selector), do: :undefined
+
+  @impl true
+  def on_load(%__MODULE__{} = dataset, %RDF.Graph{} = graph, _opts) do
+    LoadHelper.normalize_members(dataset, graph, fn member, acc ->
+      if Grax.Schema.inherited_from?(member, DCATR.Graph),
+        do: {:ok, %{acc | graphs: [member | acc.graphs]}},
+        else: {:ok, %{acc | directories: [member | acc.directories]}}
+    end)
+  end
+
+  def on_load(_dataset, _description, _opts),
+    do: raise(ArgumentError, "on_load requires an RDF.Graph, not an RDF.Description")
 end

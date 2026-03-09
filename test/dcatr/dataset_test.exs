@@ -40,6 +40,81 @@ defmodule DCATR.DatasetTest do
              ])
              |> Dataset.load(EX.Dataset1) == {:ok, example_dataset()}
     end
+
+    test "DataGraphs linked via dcatr:member appear in graphs" do
+      graph =
+        RDF.graph([
+          {EX.DataGraph1, RDF.type(), DCATR.DataGraph},
+          {EX.DataGraph2, RDF.type(), DCATR.DataGraph},
+          {EX.Dataset1, RDF.type(), DCATR.Dataset},
+          {EX.Dataset1, DCATR.member(), [EX.DataGraph1, EX.DataGraph2]}
+        ])
+
+      assert Dataset.load(graph, EX.Dataset1, depth: 1) ==
+               {:ok,
+                example_dataset()
+                |> Grax.add_additional_statements(%{
+                  DCATR.member() => [EX.DataGraph1, EX.DataGraph2]
+                })}
+    end
+
+    test "mixed: some via dcatr:dataGraph, some via dcatr:member" do
+      graph =
+        RDF.graph([
+          {EX.DataGraph1, RDF.type(), DCATR.DataGraph},
+          {EX.DataGraph2, RDF.type(), DCATR.DataGraph},
+          {EX.Dataset1, RDF.type(), DCATR.Dataset},
+          {EX.Dataset1, DCATR.dataGraph(), EX.DataGraph1},
+          {EX.Dataset1, DCATR.member(), [EX.DataGraph1, EX.DataGraph2]}
+        ])
+
+      {:ok, loaded} = Dataset.load(graph, EX.Dataset1, depth: 1)
+
+      assert length(loaded.graphs) == 2
+      loaded_ids = Enum.map(loaded.graphs, & &1.__id__) |> MapSet.new()
+
+      assert MapSet.equal?(
+               loaded_ids,
+               MapSet.new([RDF.iri(EX.DataGraph1), RDF.iri(EX.DataGraph2)])
+             )
+    end
+
+    test "Directories linked via dcatr:member appear in directories" do
+      graph =
+        RDF.graph([
+          {EX.SubDir, RDF.type(), DCATR.Directory},
+          {EX.Dataset1, RDF.type(), DCATR.Dataset},
+          {EX.Dataset1, DCATR.member(), EX.SubDir}
+        ])
+
+      {:ok, loaded} = Dataset.load(graph, EX.Dataset1, depth: 1)
+
+      assert length(loaded.directories) == 1
+      [dir] = loaded.directories
+      assert dir.__id__ == RDF.iri(EX.SubDir)
+    end
+
+    test "mixed directories: some via dcatr:directory, some via dcatr:member" do
+      graph =
+        RDF.graph([
+          {EX.Dir1, RDF.type(), DCATR.Directory},
+          {EX.Dir2, RDF.type(), DCATR.Directory},
+          {EX.Dataset1, RDF.type(), DCATR.Dataset},
+          {EX.Dataset1, DCATR.directory(), EX.Dir1},
+          {EX.Dataset1, DCATR.member(), [EX.Dir1, EX.Dir2]}
+        ])
+
+      {:ok, loaded} = Dataset.load(graph, EX.Dataset1, depth: 1)
+
+      assert length(loaded.directories) == 2
+      dir_ids = Enum.map(loaded.directories, & &1.__id__) |> MapSet.new()
+      assert MapSet.equal?(dir_ids, MapSet.new([RDF.iri(EX.Dir1), RDF.iri(EX.Dir2)]))
+    end
+
+    test "raises ArgumentError when loading from RDF.Description" do
+      desc = RDF.description(EX.Dataset1, init: {EX.Dataset1, RDF.type(), DCATR.Dataset})
+      assert_raise ArgumentError, fn -> Dataset.load(desc, EX.Dataset1) end
+    end
   end
 
   test "Grax.to_rdf/1" do

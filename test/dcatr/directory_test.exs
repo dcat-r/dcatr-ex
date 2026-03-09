@@ -50,12 +50,81 @@ defmodule DCATR.DirectoryTest do
           {EX.Directory1, DCATR.member(), [EX.Graph1, EX.Graph2]}
         ])
 
-      {:ok, dir} = Directory.load(rdf, EX.Directory1, depth: 1)
+      {:ok, dir} = Directory.load(rdf, EX.Directory1)
 
       assert dir.__id__ == RDF.iri(EX.Directory1)
       assert length(dir.members) == 2
       member_ids = Enum.map(dir.members, & &1.__id__) |> Enum.sort()
       assert member_ids == Enum.sort([RDF.iri(EX.Graph1), RDF.iri(EX.Graph2)])
+    end
+
+    test "dcatr:dataGraph on a Directory-shaped subject populates members" do
+      graph =
+        RDF.graph([
+          {EX.DataGraph1, RDF.type(), DCATR.DataGraph},
+          {EX.Directory1, RDF.type(), DCATR.Directory},
+          {EX.Directory1, DCATR.dataGraph(), EX.DataGraph1}
+        ])
+
+      {:ok, loaded} = Directory.load(graph, EX.Directory1)
+
+      assert length(loaded.members) == 1
+      assert hd(loaded.members).__id__ == RDF.iri(EX.DataGraph1)
+    end
+
+    test "dcatr:repositorySystemGraph populates members" do
+      graph =
+        RDF.graph([
+          {EX.SystemGraph1, RDF.type(), DCATR.SystemGraph},
+          {EX.Directory1, RDF.type(), DCATR.Directory},
+          {EX.Directory1, DCATR.repositorySystemGraph(), EX.SystemGraph1}
+        ])
+
+      {:ok, loaded} = Directory.load(graph, EX.Directory1)
+
+      assert length(loaded.members) == 1
+      assert hd(loaded.members).__id__ == RDF.iri(EX.SystemGraph1)
+    end
+
+    test "mixed sub-properties all appear in members" do
+      graph =
+        RDF.graph([
+          {EX.DataGraph1, RDF.type(), DCATR.DataGraph},
+          {EX.SystemGraph1, RDF.type(), DCATR.SystemGraph},
+          {EX.Directory1, RDF.type(), DCATR.Directory},
+          {EX.Directory1, DCATR.dataGraph(), EX.DataGraph1},
+          {EX.Directory1, DCATR.repositorySystemGraph(), EX.SystemGraph1}
+        ])
+
+      {:ok, loaded} = Directory.load(graph, EX.Directory1)
+
+      assert length(loaded.members) == 2
+      member_ids = Enum.map(loaded.members, & &1.__id__) |> MapSet.new()
+
+      assert MapSet.equal?(
+               member_ids,
+               MapSet.new([RDF.iri(EX.DataGraph1), RDF.iri(EX.SystemGraph1)])
+             )
+    end
+
+    test "no duplicates when same object linked via both dcatr:member and sub-property" do
+      graph =
+        RDF.graph([
+          {EX.DataGraph1, RDF.type(), DCATR.DataGraph},
+          {EX.Directory1, RDF.type(), DCATR.Directory},
+          {EX.Directory1, DCATR.member(), EX.DataGraph1},
+          {EX.Directory1, DCATR.dataGraph(), EX.DataGraph1}
+        ])
+
+      {:ok, loaded} = Directory.load(graph, EX.Directory1)
+
+      assert length(loaded.members) == 1
+      assert hd(loaded.members).__id__ == RDF.iri(EX.DataGraph1)
+    end
+
+    test "raises ArgumentError when loading from RDF.Description" do
+      desc = RDF.description(EX.Directory1, init: {EX.Directory1, RDF.type(), DCATR.Directory})
+      assert_raise ArgumentError, fn -> Directory.load(desc, EX.Directory1) end
     end
   end
 
