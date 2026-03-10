@@ -79,6 +79,8 @@ defmodule DCATR.Repository do
   schema DCATR.Repository do
     link dataset: DCATR.repositoryDataset(), type: DCATR.Dataset, depth: +2
 
+    link data_graph: DCATR.repositoryDataGraph(), type: DCATR.DataGraph, depth: +1
+
     link primary_graph: DCATR.repositoryPrimaryGraph(), type: DCATR.DataGraph, depth: +1
 
     link manifest_graph: DCATR.repositoryManifestGraph(),
@@ -91,15 +93,17 @@ defmodule DCATR.Repository do
 
   def new(id, attrs) do
     with {:ok, struct} <- build(id, attrs) do
-      Grax.validate(struct)
+      struct
+      |> propagate_data_graph()
+      |> Grax.validate()
     end
   end
 
   def new!(id, attrs), do: bang!(&new/2, [id, attrs])
 
   @impl true
-  def on_validate(%__MODULE__{dataset: nil, primary_graph: nil}, _opts) do
-    {:error, "at least one of dataset or primary_graph required"}
+  def on_validate(%__MODULE__{dataset: nil, data_graph: nil}, _opts) do
+    {:error, "at least one of dataset or data_graph required"}
   end
 
   def on_validate(
@@ -117,26 +121,35 @@ defmodule DCATR.Repository do
 
   @impl true
   def on_load(%__MODULE__{} = repo, %RDF.Graph{} = graph, _opts) do
-    LoadHelper.normalize_members(repo, graph, fn member, acc ->
-      cond do
-        Grax.Schema.inherited_from?(member, DCATR.Dataset) ->
-          LoadHelper.assign_singular(acc, :dataset, member)
+    with {:ok, repo} <-
+           LoadHelper.normalize_members(repo, graph, fn member, acc ->
+             cond do
+               Grax.Schema.inherited_from?(member, DCATR.Dataset) ->
+                 LoadHelper.assign_singular(acc, :dataset, member)
 
-        Grax.Schema.inherited_from?(member, DCATR.RepositoryManifestGraph) ->
-          LoadHelper.assign_singular(acc, :manifest_graph, member)
+               Grax.Schema.inherited_from?(member, DCATR.RepositoryManifestGraph) ->
+                 LoadHelper.assign_singular(acc, :manifest_graph, member)
 
-        Grax.Schema.inherited_from?(member, DCATR.DataGraph) ->
-          LoadHelper.assign_singular(acc, :primary_graph, member)
+               Grax.Schema.inherited_from?(member, DCATR.DataGraph) ->
+                 LoadHelper.assign_singular(acc, :data_graph, member)
 
-        Grax.Schema.inherited_from?(member, DCATR.SystemGraph) ->
-          {:ok, %{acc | system_graphs: [member | acc.system_graphs]}}
+               Grax.Schema.inherited_from?(member, DCATR.SystemGraph) ->
+                 {:ok, %{acc | system_graphs: [member | acc.system_graphs]}}
 
-        true ->
-          {:ok, acc}
-      end
-    end)
+               true ->
+                 {:ok, acc}
+             end
+           end) do
+      {:ok, propagate_data_graph(repo)}
+    end
   end
 
   def on_load(_repo, _description, _opts),
     do: raise(ArgumentError, "on_load requires an RDF.Graph, not an RDF.Description")
+
+  defp propagate_data_graph(%__MODULE__{data_graph: %_{} = data_graph, primary_graph: nil} = repo) do
+    %{repo | primary_graph: data_graph}
+  end
+
+  defp propagate_data_graph(repo), do: repo
 end

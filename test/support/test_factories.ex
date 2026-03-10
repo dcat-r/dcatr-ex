@@ -254,10 +254,10 @@ defmodule DCATR.TestFactories do
 
   def single_graph_repository(opts \\ []) do
     {id, opts} = Keyword.pop(opts, :id, generate_id("Repository"))
-    {primary_graph, opts} = Keyword.pop(opts, :primary_graph, data_graph())
+    {data_graph, opts} = Keyword.pop(opts, :data_graph, data_graph())
 
     opts
-    |> Keyword.put(:primary_graph, primary_graph)
+    |> Keyword.put(:data_graph, data_graph)
     |> build_repository(id)
   end
 

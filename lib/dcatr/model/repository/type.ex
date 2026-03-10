@@ -121,25 +121,13 @@ defmodule DCATR.Repository.Type do
   @doc """
   Default implementation of `c:DCATR.Directory.Type.graphs/1` for repositories.
 
-  Returns direct graph members: manifest, system graphs, and primary graph (only in
-  single-graph mode). In dual-use mode, primary_graph is reached via dataset traversal
-  to avoid duplicates.
+  Returns direct graph members: `data_graph` (when present), manifest, and system graphs.
+  In multi-graph mode (with dataset), `data_graph` is `nil` and the data graphs are reached
+  via dataset traversal.
   """
   @spec graphs(schema()) :: [Graph.t()]
-  def graphs(%repository_type{dataset: nil} = repository) do
-    [
-      repository_type.primary_graph(repository),
-      repository.manifest_graph
-      | repository_type.system_graphs(repository)
-    ]
-    |> Enum.reject(&is_nil/1)
-  end
-
   def graphs(%repository_type{} = repository) do
-    [
-      repository.manifest_graph
-      | repository_type.system_graphs(repository)
-    ]
+    [repository.data_graph, repository.manifest_graph | repository_type.system_graphs(repository)]
     |> Enum.reject(&is_nil/1)
   end
 

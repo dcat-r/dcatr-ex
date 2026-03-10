@@ -20,7 +20,7 @@ defmodule DCATR.Directory.LoadHelper do
   # Sub-properties pointing to graph types (Grax subtypes of DCATR.Element)
   @graph_sub_properties [
     DCATR.dataGraph(),
-    DCATR.repositoryPrimaryGraph(),
+    DCATR.repositoryDataGraph(),
     DCATR.repositorySystemGraph(),
     DCATR.repositoryManifestGraph(),
     DCATR.serviceManifestGraph(),

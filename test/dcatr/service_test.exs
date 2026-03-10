@@ -479,12 +479,12 @@ defmodule DCATR.ServiceTest do
 
   describe "primary_graph/1" do
     test "returns primary graph from repository in single-graph mode" do
-      primary_graph = data_graph()
-      repo = single_graph_repository(primary_graph: primary_graph)
+      data_graph = data_graph()
+      repo = single_graph_repository(data_graph: data_graph)
       service_data = service_data()
       service = service(repository: repo, local_data: service_data)
 
-      assert Service.primary_graph(service) == primary_graph
+      assert Service.primary_graph(service) == data_graph
     end
 
     test "returns primary graph from repository in multi-graph mode" do
@@ -548,11 +548,11 @@ defmodule DCATR.ServiceTest do
     end
 
     test "returns primary graph via :primary selector" do
-      primary_graph = data_graph()
-      repo = single_graph_repository(primary_graph: primary_graph)
+      data_graph = data_graph()
+      repo = single_graph_repository(data_graph: data_graph)
       service = service(repository: repo, local_data: service_data())
 
-      assert Service.graph(service, :primary) == primary_graph
+      assert Service.graph(service, :primary) == data_graph
     end
 
     test "returns nil for :primary when repository has no primary_graph", %{service: service} do
@@ -575,11 +575,11 @@ defmodule DCATR.ServiceTest do
     end
 
     test "resolves :primary when repository has primary_graph" do
-      primary_graph = data_graph()
-      repo = single_graph_repository(primary_graph: primary_graph)
+      data_graph = data_graph()
+      repo = single_graph_repository(data_graph: data_graph)
       service = service(repository: repo, local_data: service_data())
 
-      assert Service.resolve_graph_selector(service, :primary) == primary_graph
+      assert Service.resolve_graph_selector(service, :primary) == data_graph
     end
 
     test "returns nil for :primary when repository has no primary_graph" do
@@ -680,8 +680,8 @@ defmodule DCATR.ServiceTest do
     end
 
     test "returns true for :primary selector when repository has primary_graph" do
-      primary_graph = data_graph()
-      repo = single_graph_repository(primary_graph: primary_graph)
+      data_graph = data_graph()
+      repo = single_graph_repository(data_graph: data_graph)
       service = service(repository: repo, local_data: service_data())
 
       assert Service.has_graph?(service, :primary) == true
@@ -890,7 +890,7 @@ defmodule DCATR.ServiceTest do
   describe "load_graph_names/2 with use_primary_as_default" do
     test "nil (auto) mode - primary becomes default when no explicit default" do
       primary_graph = data_graph(id: EX.PrimaryGraph)
-      repo = single_graph_repository(primary_graph: primary_graph)
+      repo = single_graph_repository(data_graph: primary_graph)
       service = service(repository: repo, local_data: service_data(), use_primary_as_default: nil)
 
       manifest_rdf = RDF.graph()
@@ -923,7 +923,7 @@ defmodule DCATR.ServiceTest do
 
     test "nil (auto) mode - primary with explicit local name does NOT get :default" do
       primary_graph = data_graph(id: EX.PrimaryGraph)
-      repo = single_graph_repository(primary_graph: primary_graph)
+      repo = single_graph_repository(data_graph: primary_graph)
       service = service(repository: repo, local_data: service_data(), use_primary_as_default: nil)
 
       manifest_rdf = RDF.graph({EX.PrimaryGraph, DCATR.localGraphName(), EX.main()})
@@ -936,7 +936,7 @@ defmodule DCATR.ServiceTest do
 
     test "true (enforce) mode - primary becomes default" do
       primary_graph = data_graph(id: EX.PrimaryGraph)
-      repo = single_graph_repository(primary_graph: primary_graph)
+      repo = single_graph_repository(data_graph: primary_graph)
 
       service =
         service(repository: repo, local_data: service_data(), use_primary_as_default: true)
@@ -950,7 +950,7 @@ defmodule DCATR.ServiceTest do
 
     test "true (enforce) mode - error when primary has non-default local name" do
       primary_graph = data_graph(id: EX.PrimaryGraph)
-      repo = single_graph_repository(primary_graph: primary_graph)
+      repo = single_graph_repository(data_graph: primary_graph)
 
       service =
         service(repository: repo, local_data: service_data(), use_primary_as_default: true)
@@ -992,7 +992,7 @@ defmodule DCATR.ServiceTest do
 
     test "true (enforce) mode - success when explicit default matches primary" do
       primary_graph = data_graph(id: EX.PrimaryGraph)
-      repo = single_graph_repository(primary_graph: primary_graph)
+      repo = single_graph_repository(data_graph: primary_graph)
 
       service =
         service(repository: repo, local_data: service_data(), use_primary_as_default: true)
@@ -1006,7 +1006,7 @@ defmodule DCATR.ServiceTest do
 
     test "false (disable) mode - no automatic designation (default_graph remains nil)" do
       primary_graph = data_graph(id: EX.PrimaryGraph)
-      repo = single_graph_repository(primary_graph: primary_graph)
+      repo = single_graph_repository(data_graph: primary_graph)
 
       service =
         service(repository: repo, local_data: service_data(), use_primary_as_default: false)
@@ -1035,7 +1035,7 @@ defmodule DCATR.ServiceTest do
 
     test "application config fallback when not set in manifest" do
       primary_graph = data_graph(id: EX.PrimaryGraph)
-      repo = single_graph_repository(primary_graph: primary_graph)
+      repo = single_graph_repository(data_graph: primary_graph)
       service = service(repository: repo, local_data: service_data())
 
       manifest_rdf = RDF.graph()

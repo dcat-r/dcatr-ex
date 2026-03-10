@@ -5,7 +5,7 @@
 # Scenario 1: Single-Graph Repository (no local name)
 # ========================================================
 # This example demonstrates the simplest DCAT-R use case:
-# - A repository with only one graph (repositoryPrimaryGraph)
+# - A repository with only one graph (repositoryDataGraph)
 # - No dataset wrapper (dataset property is nil)
 # - No local naming (graphs accessed by global URI only)
 
@@ -26,7 +26,7 @@ _:service-manifest {
 # Repository Manifest Graph
 _:repository-manifest {
     ex:myRepository a dcatr:Repository ;
-        dcatr:repositoryPrimaryGraph ex:main-graph ;
+        dcatr:repositoryDataGraph ex:main-graph ;
         dcatr:repositoryManifestGraph ex:repository-manifest .
 
     # NOTE: No repositoryDataset property - this is single-graph mode

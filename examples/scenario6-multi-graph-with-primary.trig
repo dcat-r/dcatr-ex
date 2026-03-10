@@ -5,16 +5,16 @@
 
 # Scenario 6: Multi-Graph with Primary Designation
 # ==================================================
-# This example demonstrates the dual-use pattern of repositoryPrimaryGraph:
+# This example demonstrates repositoryPrimaryGraph:
 # - A repository with multiple graphs (via repositoryDataset)
 # - One graph designated as primary (via repositoryPrimaryGraph)
-# - The primary graph is also listed in the dataset (consistency)
+# - The primary graph is listed in the dataset (containment via dataset)
 # - All graphs accessed by global URI only (no local naming)
 # - Demonstrates explicit disabling of auto-designation via usePrimaryAsDefault: false
 #
-# This shows how repositoryPrimaryGraph serves both as:
-# 1. Single-graph shortcut (when dataset is nil)
-# 2. Primary designation (when dataset is present)
+# Note: repositoryPrimaryGraph is a pure designator (no containment semantics).
+# For single-graph repos, use repositoryDataGraph instead (which provides both
+# designation and containment).
 
 ################################################################################
 # MANIFEST GRAPHS (Configuration/Metadata)
@@ -39,7 +39,7 @@ _:repository-manifest {
         dcatr:repositoryDataset ex:myDataset ;
         dcatr:repositoryManifestGraph ex:repository-manifest .
 
-    # NOTE: Both repositoryPrimaryGraph AND repositoryDataset present (dual-use mode)
+    # NOTE: Both repositoryPrimaryGraph AND repositoryDataset present
     # The primary graph (ex:main-graph) is also listed in the dataset below
 
     ex:repository-manifest a dcatr:RepositoryManifestGraph ;

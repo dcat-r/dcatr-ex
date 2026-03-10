@@ -70,14 +70,18 @@ dcatr:Repository a rdfs:Class, owl:Class
     .
 
     dcatr:repositoryPrimaryGraph a rdf:Property, owl:ObjectProperty, owl:FunctionalProperty
-            ; rdfs:subPropertyOf dcatr:member
             ; rdfs:domain dcatr:Repository
             ; rdfs:range  dcatr:DataGraph
             ; rdfs:label "repository primary graph"
-            ; rdfs:comment """Links repository to its primary graph.
+            ; rdfs:comment "Designates the primary graph of a repository. Pure designator — does not imply containment. In multi-graph repositories, the primary graph must also be listed in the dataset. For single-graph repositories that need both containment and designation, use dcatr:repositoryDataGraph instead."
+    .
 
-Single-graph repositories: The only graph (shortcut, no dataset needed).
-Multi-graph repositories: Designates the primary graph (must also be listed in repositoryDataset/dataGraph)."""
+    dcatr:repositoryDataGraph a rdf:Property, owl:ObjectProperty, owl:FunctionalProperty
+            ; rdfs:subPropertyOf dcatr:repositoryPrimaryGraph, dcatr:member
+            ; rdfs:domain dcatr:Repository
+            ; rdfs:range  dcatr:DataGraph
+            ; rdfs:label "repository data graph"
+            ; rdfs:comment "Links a single-graph repository to its sole data graph. Sub-property of both repositoryPrimaryGraph (designation) and member (containment), providing both semantics in one statement. For multi-graph repositories, use repositoryDataset with repositoryPrimaryGraph instead."
     .
 
     dcatr:repositorySystemGraph a rdf:Property, owl:ObjectProperty
@@ -271,12 +275,20 @@ dcatr:Directory a rdfs:Class, owl:Class
         ; rdfs:comment "A named collection of graphs and nested directories within a Dataset. Directories enable hierarchical organization of graphs, providing structure for navigation, scoped metadata, and targeted operations. Each directory can contain DataGraphs as members and nested Directories."
 .
 
-    dcatr:member a rdf:Property, owl:ObjectProperty
+    dcatr:member a rdf:Property, owl:ObjectProperty, owl:InverseFunctionalProperty
             ; rdfs:subPropertyOf dcat:dataset
             ; rdfs:domain dcatr:Directory
             ; rdfs:range  dcatr:Element
             ; rdfs:label "member"
-            ; rdfs:comment "Links a directory to an Element (Graph or Directory) that is a direct member of this directory."
+            ; rdfs:comment "Links a directory to an Element (Graph or Directory) that is a direct member of this directory. As an inverse functional property, each element belongs to at most one directory (canonical containment)."
+    .
+
+    dcatr:parentDirectory a rdf:Property, owl:ObjectProperty, owl:FunctionalProperty
+            ; owl:inverseOf dcatr:member
+            ; rdfs:domain dcatr:Element
+            ; rdfs:range  dcatr:Directory
+            ; rdfs:label "parent directory"
+            ; rdfs:comment "Links an element to its containing directory. Inverse of dcatr:member."
     .
 
     dcatr:directory a rdf:Property, owl:ObjectProperty
