@@ -101,7 +101,7 @@ defmodule DCATR.Service.Type do
   defmacro __using__(_) do
     quote do
       @behaviour DCATR.Service.Type
-      use DCATR.Catalog
+      use DCATR.GraphResolver
       use Grax.Schema
 
       @doc """
@@ -160,10 +160,10 @@ defmodule DCATR.Service.Type do
       @doc """
       Resolves a symbolic selector to a graph.
 
-      This implementation of `c:DCATR.Catalog.resolve_graph_selector/2` delegates to
+      This implementation of `c:DCATR.GraphResolver.resolve_graph_selector/2` delegates to
       `DCATR.Service.Type.resolve_graph_selector/2`.
       """
-      @impl DCATR.Catalog
+      @impl DCATR.GraphResolver
       def resolve_graph_selector(service, selector) do
         DCATR.Service.Type.resolve_graph_selector(service, selector)
       end
@@ -171,7 +171,7 @@ defmodule DCATR.Service.Type do
       @doc """
       Returns a graph by ID, local name, or symbolic selector.
 
-      This overrides `DCATR.Catalog`'s generated `graph/2` to add local name lookup.
+      This overrides `DCATR.GraphResolver`'s generated `graph/2` to add local name lookup.
 
       Delegates to `DCATR.Service.Type.graph/2`.
       """
@@ -497,7 +497,7 @@ defmodule DCATR.Service.Type do
   end
 
   @doc """
-  Default implementation of `c:DCATR.Catalog.resolve_graph_selector/2`.
+  Default implementation of `c:DCATR.GraphResolver.resolve_graph_selector/2`.
 
   Resolves `:default` selector at service level, then delegates to Repository and ServiceData catalogs.
   """

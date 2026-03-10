@@ -27,15 +27,15 @@ defmodule DCATR.Repository.Type do
     quote do
       @behaviour DCATR.Repository.Type
       use DCATR.Directory.Type
-      use DCATR.Catalog
+      use DCATR.GraphResolver
 
       @doc """
       Resolves a symbolic selector to a graph.
 
-      This implementation of `c:DCATR.Catalog.resolve_graph_selector/2` delegates to
+      This implementation of `c:DCATR.GraphResolver.resolve_graph_selector/2` delegates to
       `DCATR.Repository.Type.resolve_graph_selector/2`.
       """
-      @impl DCATR.Catalog
+      @impl DCATR.GraphResolver
       def resolve_graph_selector(repo, selector) do
         DCATR.Repository.Type.resolve_graph_selector(repo, selector)
       end
@@ -89,10 +89,10 @@ defmodule DCATR.Repository.Type do
 
   # Public default implementations (called by __using__ delegation)
 
-  alias DCATR.{Catalog, Dataset, Graph, SystemGraph}
+  alias DCATR.{GraphResolver, Dataset, Graph, SystemGraph}
 
   @doc """
-  Default implementation of `c:DCATR.Catalog.resolve_graph_selector/2`.
+  Default implementation of `c:DCATR.GraphResolver.resolve_graph_selector/2`.
 
   Resolves repository-specific selectors, then delegates to the dataset for unknown selectors.
 
@@ -101,7 +101,7 @@ defmodule DCATR.Repository.Type do
   - `:primary` - Primary graph (when present)
   - `:repository_manifest`, `:repo_manifest` - Repository manifest graph
   """
-  @spec resolve_graph_selector(schema(), Catalog.selector()) :: Graph.t() | nil | :undefined
+  @spec resolve_graph_selector(schema(), GraphResolver.selector()) :: Graph.t() | nil | :undefined
   def resolve_graph_selector(repository, selector)
 
   def resolve_graph_selector(%repository_type{} = repository, :primary),

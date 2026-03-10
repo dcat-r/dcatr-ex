@@ -33,7 +33,7 @@ defmodule DCATR.Dataset do
   """
 
   use DCATR.Directory.Type
-  use DCATR.Catalog
+  use DCATR.GraphResolver
 
   alias DCATR.Directory.LoadHelper
 
@@ -58,7 +58,7 @@ defmodule DCATR.Dataset do
   @impl DCATR.Directory.Type
   def directories(%_dataset{directories: directories}), do: directories || []
 
-  @impl DCATR.Catalog
+  @impl DCATR.GraphResolver
   def resolve_graph_selector(_dataset, _selector), do: :undefined
 
   @impl true

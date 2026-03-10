@@ -30,15 +30,15 @@ defmodule DCATR.ServiceData.Type do
     quote do
       @behaviour DCATR.ServiceData.Type
       use DCATR.Directory.Type
-      use DCATR.Catalog
+      use DCATR.GraphResolver
 
       @doc """
       Resolves a symbolic selector to a graph.
 
-      This implementation of `c:DCATR.Catalog.resolve_graph_selector/2` delegates to
+      This implementation of `c:DCATR.GraphResolver.resolve_graph_selector/2` delegates to
       `DCATR.ServiceData.Type.resolve_graph_selector/2`.
       """
-      @impl DCATR.Catalog
+      @impl DCATR.GraphResolver
       def resolve_graph_selector(data, selector) do
         DCATR.ServiceData.Type.resolve_graph_selector(data, selector)
       end
@@ -94,7 +94,7 @@ defmodule DCATR.ServiceData.Type do
   alias DCATR.{Catalog, Graph, SystemGraph, WorkingGraph}
 
   @doc """
-  Default implementation of `c:DCATR.Catalog.resolve_graph_selector/2`.
+  Default implementation of `c:DCATR.GraphResolver.resolve_graph_selector/2`.
 
   Resolves service-data-specific selectors.
 
