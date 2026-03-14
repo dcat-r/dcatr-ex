@@ -34,10 +34,7 @@ defmodule DCATR.MixProject do
           DCATR.TestFactories
         ]
       ],
-      aliases: aliases(),
-      preferred_cli_env: [
-        check: :test
-      ]
+      aliases: aliases()
     ]
   end
 
@@ -75,6 +72,14 @@ defmodule DCATR.MixProject do
 
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
+
+  def cli do
+    [
+      preferred_envs: [
+        check: :test
+      ]
+    ]
+  end
 
   defp aliases do
     [
