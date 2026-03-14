@@ -1,10 +1,12 @@
 defmodule DCATR.MixProject do
   use Mix.Project
 
+  @version File.read!("VERSION") |> String.trim()
+
   def project do
     [
       app: :dcatr,
-      version: "0.1.0",
+      version: @version,
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
