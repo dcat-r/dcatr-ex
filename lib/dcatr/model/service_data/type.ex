@@ -91,7 +91,7 @@ defmodule DCATR.ServiceData.Type do
 
   # Public default implementations (called by __using__ delegation)
 
-  alias DCATR.{Catalog, Graph, SystemGraph, WorkingGraph}
+  alias DCATR.{GraphResolver, Graph, SystemGraph, WorkingGraph}
 
   @doc """
   Default implementation of `c:DCATR.GraphResolver.resolve_graph_selector/2`.
@@ -102,7 +102,7 @@ defmodule DCATR.ServiceData.Type do
 
   - `:service_manifest` - Service manifest graph
   """
-  @spec resolve_graph_selector(schema(), Catalog.selector()) :: Graph.t() | nil | :undefined
+  @spec resolve_graph_selector(schema(), GraphResolver.selector()) :: Graph.t() | nil | :undefined
   def resolve_graph_selector(service_data, selector)
 
   def resolve_graph_selector(%_{manifest_graph: manifest_graph}, :service_manifest),

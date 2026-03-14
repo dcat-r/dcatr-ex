@@ -261,7 +261,7 @@ defmodule DCATR.Service.Type do
 
   # Public default implementations (called by __using__ delegation)
 
-  alias DCATR.{Manifest, Catalog}
+  alias DCATR.{Manifest, GraphResolver}
 
   import RDF.Guards
 
@@ -459,7 +459,7 @@ defmodule DCATR.Service.Type do
   """
   @spec graph_name(
           schema(),
-          Catalog.selector() | DCATR.Graph.t() | RDF.IRI.coercible(),
+          GraphResolver.selector() | DCATR.Graph.t() | RDF.IRI.coercible(),
           keyword()
         ) ::
           Service.graph_name() | nil
@@ -501,7 +501,7 @@ defmodule DCATR.Service.Type do
 
   Resolves `:default` selector at service level, then delegates to Repository and ServiceData catalogs.
   """
-  @spec resolve_graph_selector(schema(), Catalog.selector()) ::
+  @spec resolve_graph_selector(schema(), GraphResolver.selector()) ::
           DCATR.Graph.t() | nil | :undefined
   def resolve_graph_selector(%service_type{} = service, :default) do
     service_type.default_graph(service)
@@ -526,7 +526,7 @@ defmodule DCATR.Service.Type do
   Tries selector resolution, then local name lookup, then ID lookup across Repository
   and ServiceData catalogs.
   """
-  @spec graph(schema(), Catalog.id_or_selector()) :: DCATR.Graph.t() | nil
+  @spec graph(schema(), GraphResolver.id_or_selector()) :: DCATR.Graph.t() | nil
   def graph(%service_type{} = service, name_or_selector_or_id) do
     case service_type.resolve_graph_selector(service, name_or_selector_or_id) do
       :undefined ->
