@@ -83,6 +83,7 @@ defmodule DCATR.MixProject do
       main: "DCATR",
       source_url: @scm_url,
       source_ref: "v#{@version}",
+      logo: "dcatr-logo.png",
       groups_for_modules: [
         Model: [
           DCATR.GraphResolver,
