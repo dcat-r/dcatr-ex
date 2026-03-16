@@ -1,6 +1,70 @@
 defmodule DCATR.Service.Type do
   @moduledoc """
   Behaviour for service types that provide operations for repository access and processing.
+
+  This behaviour enables applications to create specialized `DCATR.Service` types with custom operations,
+  APIs, and data processing workflows. See `DCATR.Service` for the foundational service model.
+
+  Service types define the infrastructure for implementing operations that access repository data.
+  The callbacks provided by this behaviour handle loading, graph management, and name resolution -
+  all in service of enabling operation implementations.
+
+  ## Service Structure
+
+  Each service aggregates data from two catalogs:
+
+  - **repository** - Distributable repository catalog (Repository)
+  - **local_data** - Service-local catalog (ServiceData)
+  - **graph_names** - Bidirectional graph ID↔name mapping for triple-store operations
+
+  ## Callback Hierarchy
+
+  **Loading callbacks**:
+
+  - `c:load_from_dataset/3` - Initialize service from RDF manifest data
+  - `c:load_graph_names/2` - Extract graph name mappings from manifest
+
+  **Graph name callbacks** (infrastructure for triple-store operations):
+
+  - `c:graph_name/3` - Translate graph references to local storage names
+  - `c:graph_by_name/2` - Retrieve graphs via local names
+  - `c:default_graph/1` - Access the designated default graph
+  - `c:primary_graph/1` - Access the primary graph from the repository
+
+  Inherits from `DCATR.GraphResolver`:
+
+  - `c:DCATR.GraphResolver.resolve_graph_selector/2` — delegates across `repository` and `local_data`
+
+  ## Graph Name Management
+
+  Graph names enable triple-store operations by mapping global graph IDs to service-local
+  storage names. Names can be:
+
+  - Graph ID as name (automatic fallback)
+  - Explicitly mapped (via `dcatr:localGraphName`)
+  - Designated as `:default` (via `dcatr:DefaultGraph`)
+
+  ## Usage
+
+  Custom service types should `use DCATR.Service.Type` and define a Grax schema
+  extending `DCATR.Service`:
+
+      defmodule MyApp.Service do
+        use DCATR.Service.Type
+
+        schema MyApp.NS.Service < DCATR.Service do
+        end
+
+        # Define service-specific operations
+        def query(service, sparql) do
+          # Use graph/2, graph_name/3 to implement operations
+          ...
+        end
+      end
+
+  The module automatically provides delegating implementations of all callbacks, convenience
+  functions for type introspection, and helper functions for graph name management.
+  All generated functions are overridable.
   """
   alias DCATR.{Service, DuplicateGraphNameError}
 
@@ -270,8 +334,8 @@ defmodule DCATR.Service.Type do
   @doc """
   Default implementation of `c:load_from_dataset/3`.
 
-  Loads service and repository from their manifest graphs in two stages from the 
-  different manifest graphs, then enriches the service with graph name mappings 
+  Loads service and repository from their manifest graphs in two stages from the
+  different manifest graphs, then enriches the service with graph name mappings
   from the service manifest via `c:load_graph_names/2`.
   """
   @spec load_from_dataset(t(), RDF.Dataset.t(), RDF.IRI.coercible(), keyword()) ::

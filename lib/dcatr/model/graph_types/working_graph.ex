@@ -1,9 +1,10 @@
 defmodule DCATR.WorkingGraph do
   @moduledoc """
-  A `DCATR.Graph` for local working areas not included in distributions.
+  A `DCATR.Graph` for temporary, service-local working areas.
 
-  Working graphs are service-local and form a temporary, non-published area.
-  Used for drafts, experiments, temporary work etc.
+  Working graphs are never distributed. They serve as staging areas, draft spaces,
+  caches, or experimental work areas - analogous to a working directory in version
+  control systems.
 
   Blank nodes are allowed as graph IDs for working graphs.
   """

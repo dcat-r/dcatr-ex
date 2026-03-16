@@ -1,10 +1,12 @@
 defmodule DCATR.ManifestGraph do
   @moduledoc """
-  Abstract base class for `DCATR.Graph`s containing DCAT descriptions.
+  Abstract base class for `DCATR.Graph`s containing DCAT-R configuration and catalog metadata.
 
-  Manifest graphs have a known structure containing DCAT descriptions and configuration
-  that define the repository and service structure. DCAT-R depends on this structure
-  for proper operation.
+  Manifest graphs carry the configuration that defines the repository and service structure.
+  DCAT-R depends on this structure for proper operation. Two concrete subtypes exist:
+
+  - `DCATR.RepositoryManifestGraph` - distributed catalog description of the repository
+  - `DCATR.ServiceManifestGraph` - instance-local service configuration
   """
 
   use Grax.Schema

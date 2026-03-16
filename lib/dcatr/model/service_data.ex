@@ -1,10 +1,13 @@
 defmodule DCATR.ServiceData do
   @moduledoc """
-  A catalog of service-specific `DCATR.Graph`s not distributed with the `DCATR.Repository`.
+  A local catalog of service-specific `DCATR.Graph`s not distributed with the `DCATR.Repository`.
 
-  Contains graphs that are local to a `DCATR.Service` instance:
+  Since `dcatr:Service` is a `dcat:DataService` (not a `dcat:Catalog`), it cannot directly
+  contain graphs. ServiceData fills this role as the local `dcat:Catalog` counterpart to
+  `DCATR.Repository` (the distributed catalog), organizing all graphs that are specific to
+  a service instance:
 
-  - a`DCATR.ServiceManifestGraph` - service configuration
+  - a `DCATR.ServiceManifestGraph` - service configuration
   - a set of `DCATR.WorkingGraph`s - temporary/experimental data
   - a set of service-specific `DCATR.SystemGraph`s
 

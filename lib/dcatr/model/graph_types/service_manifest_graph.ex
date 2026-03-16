@@ -1,6 +1,6 @@
 defmodule DCATR.ServiceManifestGraph do
   @moduledoc """
-  A `DCATR.ManifestGraph` containing the DCAT DataService description and local configuration of a `DCATR.Service`.
+  A `DCATR.ManifestGraph` containing instance-specific configuration of a `DCATR.Service`.
 
   Service manifest graphs contain service-specific configuration and local settings.
   These graphs are not replicated between service instances and contain the local

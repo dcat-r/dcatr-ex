@@ -9,7 +9,7 @@ defmodule DCATR.Manifest do
   ## Design Rationale
 
   The manifest is implemented as a Grax schema to provide extensibility through Grax
-  subclassing** - Applications can extend `DCATR.Manifest` with custom properties and links,
+  subclassing. Applications can extend `DCATR.Manifest` with custom properties and links,
   creating specialized manifest types while preserving the base service hierarchy access.
 
   The manifest struct serves as an extensible token that flows through the loading pipeline  

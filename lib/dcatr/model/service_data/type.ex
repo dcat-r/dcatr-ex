@@ -1,6 +1,62 @@
 defmodule DCATR.ServiceData.Type do
   @moduledoc """
   Behaviour for defining custom service data catalogs with additional local graphs.
+
+  `DCATR.ServiceData` manages service-local graphs that are not part of the distributed repository
+  (e.g., configuration, working graphs, service-specific metadata). This behaviour enables
+  applications to create specialized service data catalogs with custom local graphs.
+
+  ## Graph Structure
+
+  ServiceData contains:
+
+  - **manifest** - Service configuration (ServiceManifestGraph)
+  - **working_graphs** - Temporary/experimental graphs local to the service
+  - **system_graphs** - Service-level metadata and operational graphs
+
+  ## Callbacks
+
+  - `c:system_graphs/1` - Returns service-level system graphs
+  - `c:working_graphs/1` - Returns service-local working graphs
+
+  Inherits from `DCATR.Directory.Type`:
+
+  - `c:DCATR.Directory.Type.graphs/1`, `c:DCATR.Directory.Type.directories/1`
+
+  Inherits from `DCATR.GraphResolver`:
+
+  - `c:DCATR.GraphResolver.resolve_graph_selector/2`
+
+  ## Standard Selectors
+
+  - `:service_manifest` - Service configuration graph
+
+  ## Usage
+
+  Custom service data types should `use DCATR.ServiceData.Type` and define a Grax schema
+  extending `DCATR.ServiceData`:
+
+      defmodule MyApp.ServiceData do
+        use DCATR.ServiceData.Type
+
+        schema MyApp.NS.ServiceData < DCATR.ServiceData do
+          link cache_graph: MyApp.NS.cache(), type: MyApp.CacheGraph
+          link log_graph: MyApp.NS.log(), type: MyApp.LogGraph
+        end
+
+        @impl true
+        def resolve_graph_selector(data, :cache), do: data.cache_graph
+        def resolve_graph_selector(data, :log), do: data.log_graph
+        def resolve_graph_selector(data, selector), do: super(data, selector)
+
+        @impl true
+        def system_graphs(data) do
+          [data.cache_graph, data.log_graph | super(data)]
+        end
+      end
+
+  The module automatically provides delegating implementations of all callbacks
+  and convenience functions, all of which are overridable.
   """
 
   @type t :: module()

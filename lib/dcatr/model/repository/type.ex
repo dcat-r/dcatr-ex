@@ -1,6 +1,59 @@
 defmodule DCATR.Repository.Type do
   @moduledoc """
   Behaviour for defining custom repository types with extensible graph catalogs.
+
+  `DCATR.Repository`s are the core catalog layer in DCAT-R. This behaviour enables applications to
+  create specialized repository types with custom graph collections and selector logic.
+
+  ## Graph Structure
+
+  A repository contains:
+  - **dataset** - Primary catalog of DataGraphs (user data)
+  - **manifest_graph** - Repository manifest (RepositoryManifestGraph)
+  - **system_graphs** - Optional repository-level graphs (e.g., history, provenance)
+
+  ## Callbacks
+
+  - `c:system_graphs/1` - Returns additional system-level graphs
+  - `c:primary_graph/1` - Returns the primary graph if one is designated
+
+  Inherits from `DCATR.Directory.Type`:
+
+  - `c:DCATR.Directory.Type.graphs/1`, `c:DCATR.Directory.Type.directories/1`
+
+  Inherits from `DCATR.GraphResolver`:
+
+  - `c:DCATR.GraphResolver.resolve_graph_selector/2`
+
+  ## Standard Selectors
+
+  - `:primary` - Primary graph (when present)
+  - `:repository_manifest`, `:repo_manifest` - Repository metadata graph
+
+  ## Usage
+
+  Custom repository types should `use DCATR.Repository.Type` and define a Grax schema
+  extending `DCATR.Repository`:
+
+      defmodule MyApp.Repository do
+        use DCATR.Repository.Type
+
+        schema MyApp.NS.Repository < DCATR.Repository do
+          link history_graph: MyApp.NS.history(), type: MyApp.HistoryGraph
+        end
+
+        @impl true
+        def resolve_graph_selector(repo, :history), do: repo.history_graph
+        def resolve_graph_selector(repo, selector), do: super(repo, selector)
+
+        @impl true
+        def system_graphs(repo) do
+          [repo.history_graph | super(repo)]
+        end
+      end
+
+  The module automatically provides delegating implementations of all callbacks
+  and convenience functions, all of which are overridable.
   """
 
   @type t :: module()

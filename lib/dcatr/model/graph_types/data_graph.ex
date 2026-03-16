@@ -1,9 +1,9 @@
 defmodule DCATR.DataGraph do
   @moduledoc """
-  A `DCATR.Graph` containing the actual user data of a `DCATR.Dataset`.
+  A `DCATR.Graph` containing user data within a `DCATR.Dataset`.
 
-  These are the primary content graphs that form the core of the `DCATR.Repository`'s
-  dataset, distinct from system metadata and working areas.
+  Data graphs form the primary content of the repository's dataset - the actual domain data.
+  They are always contained in the dataset catalog and distributed with the repository.
   """
 
   use Grax.Schema

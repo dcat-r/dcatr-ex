@@ -1,6 +1,33 @@
 defmodule DCATR.Manifest.Loader do
   @moduledoc """
   Loads the manifest from the configured load path.
+
+  This module provides the default implementations of the `DCATR.Manifest.Type` callbacks.
+  Custom manifest types can override any of these by implementing the corresponding callback.
+
+  ## Loading Pipeline
+
+  Manifest loading proceeds in two phases:
+
+  1. **Dataset loading** (`load_dataset/1` → `load_file/2` per file → `graph_name_for_file/2`):
+     Resolves files from the load path, reads each RDF file, classifies it into the appropriate
+     manifest graph, and merges everything into a single `RDF.Dataset`.
+
+  2. **Manifest building** (`load_manifest/2`):
+     Finds the service resource in the dataset, auto-injects missing `dcatr:ServiceData` and
+     `dcatr:ServiceManifestGraph` structures with default IDs when not explicitly declared,
+     then loads the complete service hierarchy (Service → Repository → Dataset).
+
+  ## Well-Known Blank Node Graph Names
+
+  When manifest configuration is stored in separate Turtle files (rather than a single TriG file),
+  each file is classified and placed into a named graph using well-known blank node labels:
+
+  - `_:service-manifest` — for the service manifest graph
+  - `_:repository-manifest` — for the repository manifest graph
+
+  These conventions follow the DCAT-R specification and enable implementations to locate
+  manifest graphs by convention without prior configuration.
   """
 
   alias DCATR.Manifest
