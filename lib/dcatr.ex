@@ -160,4 +160,13 @@ defmodule DCATR do
       config :dcatr, :manifest_type, MyApp.Manifest
   """
   def manifest_type, do: Application.get_env(:dcatr, :manifest_type, DCATR.Manifest)
+
+  defdelegate manifest(opts \\ []), to: DCATR.Manifest
+  defdelegate manifest!(opts \\ []), to: DCATR.Manifest
+
+  defdelegate service(opts \\ []), to: DCATR.Manifest
+  defdelegate service!(opts \\ []), to: DCATR.Manifest
+
+  defdelegate repository(opts \\ []), to: DCATR.Manifest
+  defdelegate repository!(opts \\ []), to: DCATR.Manifest
 end
