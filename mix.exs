@@ -1,7 +1,9 @@
 defmodule DCATR.MixProject do
   use Mix.Project
 
-  @scm_url "https://github.com/dcat-r/dcat-r-ex"
+  @scm_url "https://github.com/dcat-r/dcatr-ex"
+  @spec_url "https://w3id.org/dcatr"
+
   @version File.read!("VERSION") |> String.trim()
 
   def project do
@@ -41,7 +43,25 @@ defmodule DCATR.MixProject do
 
       # Docs
       name: "DCAT-R.ex",
-      docs: docs()
+      docs: docs(),
+
+      # Hex
+      package: package(),
+      description:
+        "A framework for services over RDF repositories based on the DCAT-R vocabulary."
+    ]
+  end
+
+  defp package do
+    [
+      maintainers: ["Marcel Otto"],
+      licenses: ["MIT"],
+      links: %{
+        "GitHub" => @scm_url,
+        "Specification" => @spec_url,
+        "Changelog" => @scm_url <> "/blob/main/CHANGELOG.md"
+      },
+      files: ~w[lib priv mix.exs .formatter.exs VERSION *.md]
     ]
   end
 
@@ -60,14 +80,14 @@ defmodule DCATR.MixProject do
       rdf_ex_dep(:rdf_xml, "~> 1.2", only: [:dev, :test]),
       rdf_ex_dep(:json_ld, "~> 1.0", only: [:dev, :test]),
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40", only: [:dev, :test], runtime: false}
     ]
   end
 
   defp rdf_ex_dep(dep, version, opts \\ []) do
     case System.get_env("RDF_EX_PACKAGES_SRC") do
-      "LOCAL" -> {dep, [{:path, "../#{dep}"} | opts]}
+      "LOCAL" -> {dep, path: "../../../RDF.ex/src/#{dep}"}
       _ -> {dep, version, opts}
     end
   end
@@ -84,6 +104,12 @@ defmodule DCATR.MixProject do
       source_url: @scm_url,
       source_ref: "v#{@version}",
       logo: "dcatr-logo.png",
+      skip_undefined_reference_warnings_on: ["CHANGELOG.md"],
+      extras: [
+        {:"README.md", [title: "About"]},
+        {:"CHANGELOG.md", [title: "CHANGELOG"]},
+        {:"LICENSE.md", [title: "License"]}
+      ],
       groups_for_modules: [
         Model: [
           DCATR.GraphResolver,
