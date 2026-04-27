@@ -1,9 +1,3 @@
-<p align="center">
-  <img src="dcatr-logo.png" alt="DCAT-R Logo" width="100" align="right">
-</p>
-
-# DCAT-R.ex
-
 [![Hex.pm](https://img.shields.io/hexpm/v/dcatr.svg?style=flat-square)](https://hex.pm/packages/dcatr)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-lightgreen.svg)](https://hexdocs.pm/dcatr/)
 [![License](https://img.shields.io/hexpm/l/dcatr.svg)](https://github.com/dcat-r/dcatr-ex/blob/main/LICENSE.md)
@@ -12,9 +6,33 @@
 [![Dialyzer](https://github.com/dcat-r/dcatr-ex/actions/workflows/elixir-dialyzer.yml/badge.svg)](https://github.com/dcat-r/dcatr-ex/actions/workflows/elixir-dialyzer.yml)
 [![Quality Checks](https://github.com/dcat-r/dcatr-ex/actions/workflows/elixir-quality-checks.yml/badge.svg)](https://github.com/dcat-r/dcatr-ex/actions/workflows/elixir-quality-checks.yml)
 
-**A framework for building data services over RDF repositories**
 
-DCAT-R.ex is an Elixir library implementing the [DCAT-R vocabulary](https://w3id.org/dcatr) - an OWL extension of [DCAT 3](https://www.w3.org/TR/vocab-dcat-3/) for describing and operating RDF repositories. It provides Grax schemas, a manifest-based configuration system, and extension points for building specialized services over RDF datasets.
+<br />
+<div align="center">
+  <img src="dcatr-logo.png" alt="DCAT-R Logo" width="200">
+
+<h2 align="center">DCAT-R.ex</h2>
+
+  <p align="center">
+    A framework for building data services over RDF repositories
+    <br />
+    <a href="https://hexdocs.pm/dcatr"><strong>Explore the docs »</strong></a>
+    <br />
+    <br />
+    <a href="https://github.com/dcat-r/dcatr-ex/blob/main/CHANGELOG.md">Changelog</a>
+    ·
+    <a href="https://github.com/dcat-r/dcatr-ex/issues">Report Bug</a>
+    ·
+    <a href="https://github.com/dcat-r/dcatr-ex/issues">Request Feature</a>
+    ·
+    <a href="https://github.com/orgs/dcat-r/discussions">Discussions</a>
+  </p>
+</div>
+
+
+## About the Project
+
+DCAT-R.ex is an Elixir library implementing the [DCAT-R vocabulary](https://w3id.org/dcatr). It provides Grax schemas, a manifest-based configuration system, and extension points for building specialized services over RDF datasets.
 
 
 ## What is DCAT-R?
