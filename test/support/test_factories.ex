@@ -405,7 +405,7 @@ defmodule DCATR.TestFactories do
     service_graph =
       [
         service.__id__
-        |> RDF.type(RDF.iri(service.__class__()))
+        |> RDF.type(RDF.iri(apply(service.__struct__, :__class__, [])))
         |> DCATR.serviceRepository(service.repository.__id_)
         |> DCATR.serviceLocalData(service.local_data.__id_),
         service.local_data.__id__
@@ -415,7 +415,7 @@ defmodule DCATR.TestFactories do
 
     repo_graph =
       service.repository.__id__
-      |> RDF.type(RDF.iri(service.repository.__class__()))
+      |> RDF.type(RDF.iri(apply(service.__struct__, :__class__, [])))
       |> DCATR.repositoryDataset(service.repository.dataset.__id__)
       |> DCATR.repositoryManifestGraph(service.repository.manifest_graph.__id__)
       |> RDF.Graph.new(name: RDF.bnode("repository-manifest"))

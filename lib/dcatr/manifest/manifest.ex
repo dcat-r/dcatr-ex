@@ -114,9 +114,17 @@ defmodule DCATR.Manifest do
   @spec env(keyword()) :: atom()
   def env(opts \\ []) do
     opts
-    |> Keyword.get(
-      :env,
-      System.get_env("DCATR_ENV") || System.get_env("MIX_ENV") || @env ||
+    |> Keyword.get(:env, default_env())
+    |> to_env()
+  end
+
+  defp system_env, do: System.get_env("DCATR_ENV") || System.get_env("MIX_ENV")
+
+  if @env do
+    defp default_env, do: system_env() || @env
+  else
+    defp default_env do
+      system_env() ||
         raise("""
         No environment configured. Please set the :dcatr environment via the `:env` configuration option:
 
@@ -124,8 +132,7 @@ defmodule DCATR.Manifest do
 
         Alternatively, you can set the environment via the `DCATR_ENV` or `MIX_ENV` environment variables.
         """)
-    )
-    |> to_env()
+    end
   end
 
   defp to_env(env) when is_binary(env),

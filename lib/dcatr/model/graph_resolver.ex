@@ -57,10 +57,7 @@ defmodule DCATR.GraphResolver do
       @spec graph(DCATR.GraphResolver.container(), DCATR.GraphResolver.id_or_selector()) ::
               DCATR.Graph.t() | nil
       def graph(container, id_or_selector) do
-        case resolve_graph_selector(container, id_or_selector) do
-          :undefined -> find_graph(container, RDF.coerce_graph_name(id_or_selector))
-          result -> result
-        end
+        DCATR.GraphResolver.resolve(__MODULE__, container, id_or_selector)
       end
 
       @doc """
@@ -76,6 +73,15 @@ defmodule DCATR.GraphResolver do
       end
 
       defoverridable graph: 2, has_graph?: 2
+    end
+  end
+
+  @doc false
+  @spec resolve(module(), container(), id_or_selector()) :: DCATR.Graph.t() | nil
+  def resolve(module, container, id_or_selector) do
+    case module.resolve_graph_selector(container, id_or_selector) do
+      :undefined -> module.find_graph(container, RDF.coerce_graph_name(id_or_selector))
+      result -> result
     end
   end
 end
